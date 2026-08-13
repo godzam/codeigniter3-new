@@ -1,5 +1,7 @@
 # CodeIgniter 3 Starter — PHP 8.4+, HMVC, DevelBar
 
+![CI](https://github.com/godzam/codeigniter3-new/actions/workflows/ci.yml/badge.svg)
+
 A CodeIgniter 3 (3.2.0-dev) starting point that's ready for modern PHP out of the box:
 
 - **PHP 8.2–8.5 compatible** — the framework's "super object" pattern (controllers/loader/router carrying dynamically-attached properties) is patched so it doesn't throw `Deprecated: Creation of dynamic property` warnings.
@@ -25,6 +27,9 @@ A CodeIgniter 3 (3.2.0-dev) starting point that's ready for modern PHP out of th
    ```
 4. Set `$config['base_url']` in `application/config/config.php` if you're not relying on auto-detection.
 5. Visit the site. On `ENVIRONMENT === 'development'` (the default when the `CI_ENV` server var isn't set) you should see the DevelBar docked at the bottom of the page.
+6. Visit `/example` for a working, runnable HMVC module (no database needed) — see [Creating an HMVC module](#creating-an-hmvc-module) below.
+
+Contributing or extending this yourself? See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Project layout
 
@@ -33,7 +38,8 @@ application/
   core/
     MY_Loader.php      — extends MX_Loader (HMVC) + per-view memory tracking for DevelBar
     MY_Router.php       — extends MX_Router (HMVC)
-  modules/               — HMVC modules go here (empty scaffold)
+  modules/
+    example/               — working reference module (see below), safe to delete
   third_party/
     MX/                  — HMVC (Modular Extensions) library
     DevelBar/             — dev toolbar
@@ -42,6 +48,8 @@ system/
 ```
 
 ## Creating an HMVC module
+
+`application/modules/example/` is a working, runnable reference — visit `/example` and read its three files (`controllers/Example.php`, `models/Example_model.php`, `views/index.php`). It deliberately doesn't touch the database, so it works right after clone. Copy its layout for a real module:
 
 ```
 application/modules/blog/
@@ -67,6 +75,7 @@ class Blog extends MX_Controller
 - Hitting `/blog` routes straight to the module controller — no extra routing config needed.
 - Call one module from another (or from a view) with `Modules::run('blog/index')`, or `$this->load->module('blog')` to load it as an object.
 - Cross-module loading works too: `$this->load->model('blog/blog_model')`.
+- Delete `application/modules/example/` once you don't need the reference anymore.
 
 See the [Modular Extensions notes](application/third_party/MX/Controller.php) for the full API (autoloading per-module, view partials, etc.) — the original documentation lives at the [upstream fork](https://github.com/5112n4/wiredesignz-codeigniter-modular-extensions).
 
