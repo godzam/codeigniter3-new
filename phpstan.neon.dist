@@ -1,0 +1,36 @@
+parameters:
+	level: 3
+	bootstrapFiles:
+		- phpstan-bootstrap.php
+	scanDirectories:
+		- system
+		- application/third_party
+	paths:
+		- application/controllers
+		- application/core
+		- application/models
+		- application/helpers
+		- application/hooks
+		- application/libraries
+		- application/modules
+		- application/src
+	excludePaths:
+		- application/cache/*
+		- application/logs/*
+		# CI3 views rely on extract()-ed variables, invisible to static
+		# analysis in isolation — not a real bug class, just noise.
+		- application/modules/*/views/*
+	reportUnmatchedIgnoredErrors: false
+	ignoreErrors:
+		-
+			# insert_id() is real at runtime (declared per-driver, e.g.
+			# CI_DB_mysqli_driver::insert_id() in
+			# system/database/drivers/mysqli/mysqli_driver.php) but not on
+			# the CI_DB_query_builder base that $db is typed as elsewhere.
+			# CI3 links the two through a class dynamically declared inside
+			# a function body in system/database/DB.php
+			# (`class CI_DB extends CI_DB_query_builder {}`), which
+			# PHPStan's static reflection can't see — a real gap in static
+			# analysis, not a real bug in the code.
+			message: '#Call to an undefined method CI_DB_query_builder::insert_id\(\)#'
+			path: application/*

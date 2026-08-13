@@ -1,0 +1,14 @@
+.git
+.github
+vendor/
+tests/
+tests-app/
+user_guide_src/
+.env
+application/logs/*
+!application/logs/index.html
+application/cache/*
+!application/cache/index.html
+*.md
+.php-cs-fixer.cache
+.phpunit.cache

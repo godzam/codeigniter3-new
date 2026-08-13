@@ -46,6 +46,13 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * @category	Libraries
  * @author		EllisLab Dev Team
  * @link		https://codeigniter.com/userguide3/libraries/config.html
+ *
+ * $load is resolved through __get() below, proxying to the controller's
+ * loader — true for every model, hence listed here. Anything else
+ * (like $db) is model-specific and should be annotated on the subclass
+ * that actually loads it.
+ *
+ * @property CI_Loader $load
  */
 #[\AllowDynamicProperties]
 class CI_Model {

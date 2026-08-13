@@ -3,6 +3,14 @@
 # Local database credentials — copy application/config/database.php.example
 application/config/database.php
 
+# Environment secrets
+.env
+
+# Tooling caches
+.php-cs-fixer.cache
+.phpunit.cache/
+tests-app/.phpunit.cache/
+
 application/cache/*
 !application/cache/index.html
 
@@ -11,7 +19,6 @@ application/logs/*
 
 !application/*/.htaccess
 
-composer.lock
 tests/mocks/database/ci_test.sqlite
 
 user_guide_src/build/*

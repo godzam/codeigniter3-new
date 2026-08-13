@@ -58,7 +58,11 @@ $autoload['packages'] = array(APPPATH.'third_party/DevelBar');
 |
 |	$autoload['libraries'] = array('user_agent' => 'ua');
 */
-$autoload['libraries'] = array();
+// 'session' is autoloaded so is_logged_in()/current_user() (see
+// application/helpers/auth_helper.php) work from any controller, not
+// just application/modules/auth. Uses the 'files' session driver by
+// default (config.php) — no database required.
+$autoload['libraries'] = array('session');
 
 /*
 | -------------------------------------------------------------------
@@ -89,7 +93,7 @@ $autoload['drivers'] = array();
 |
 |	$autoload['helper'] = array('url', 'file');
 */
-$autoload['helper'] = array();
+$autoload['helper'] = array('url', 'auth');
 
 /*
 | -------------------------------------------------------------------

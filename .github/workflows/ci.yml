@@ -13,6 +13,16 @@ jobs:
       matrix:
         php: ['8.1', '8.2', '8.3', '8.4']
 
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_DATABASE: app
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=5s --health-retries=10
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,12 +33,25 @@ jobs:
           php-version: ${{ matrix.php }}
           extensions: mysqli, mbstring
           coverage: none
+          tools: composer
 
       - name: Lint all PHP files
         run: find . -path ./vendor -prune -o -name '*.php' -print0 | xargs -0 -n1 -P4 php -l
 
+      - name: Install composer dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
       - name: Set up local config
-        run: cp application/config/database.php.example application/config/database.php
+        run: |
+          cp application/config/database.php.example application/config/database.php
+          echo "DB_HOST=127.0.0.1" >> .env
+          echo "DB_USERNAME=root" >> .env
+          echo "DB_DATABASE=app" >> .env
+
+      - name: Run migrations and seeders
+        run: |
+          php index.php console migrate
+          php index.php console seed
 
       - name: Boot the app and smoke test routes
         run: |
@@ -55,5 +78,51 @@ jobs:
 
           check ""
           check "example"
+          check "health"
+          check "login"
+          check "register"
 
           kill $SERVER_PID
+
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer
+
+      - name: Install composer dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: PHPStan
+        run: composer analyze -- --error-format=github
+
+      - name: PHP-CS-Fixer (dry run)
+        run: composer cs-check
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer
+
+      - name: Install composer dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: PHPUnit
+        run: composer test

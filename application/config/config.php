@@ -27,9 +27,14 @@ $is_secure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on')
     || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')
     || (isset($_SERVER['HTTP_FRONT_END_HTTPS']) && $_SERVER['HTTP_FRONT_END_HTTPS'] == 'on')
     || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+// $_SERVER['HTTP_HOST']/['SCRIPT_NAME'] don't exist in CLI (php index.php
+// console ...) — fall back gracefully instead of warning, since base_url
+// isn't meaningfully used outside an HTTP request anyway.
 $config['base_url'] = $is_secure ? "https" : "http";
-$config['base_url'] .= "://" . $_SERVER['HTTP_HOST'];
-$config['base_url'] .= str_replace(basename($_SERVER['SCRIPT_NAME']), "", $_SERVER['SCRIPT_NAME']);
+$config['base_url'] .= "://" . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+$config['base_url'] .= isset($_SERVER['SCRIPT_NAME'])
+    ? str_replace(basename($_SERVER['SCRIPT_NAME']), "", $_SERVER['SCRIPT_NAME'])
+    : '/';
 
 /*
 |--------------------------------------------------------------------------
@@ -420,11 +425,14 @@ $config['cookie_samesite'] 	= 'Lax';
 | 'csrf_regenerate' = Regenerate token on every submission
 | 'csrf_exclude_uris' = Array of URIs which ignore CSRF checks
 */
-$config['csrf_protection'] = FALSE;
-$config['csrf_token_name'] = 'csrf_test_name';
-$config['csrf_cookie_name'] = 'csrf_cookie_name';
+$config['csrf_protection'] = TRUE;
+$config['csrf_token_name'] = 'csrf_token';
+$config['csrf_cookie_name'] = 'csrf_cookie';
 $config['csrf_expire'] = 7200;
 $config['csrf_regenerate'] = TRUE;
+// Add plain API/webhook routes here that legitimately can't send a CSRF
+// token (e.g. 'api/webhook') — don't exclude anything that handles a
+// browser-submitted <form>.
 $config['csrf_exclude_uris'] = array();
 
 /*

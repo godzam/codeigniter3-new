@@ -18,3 +18,10 @@ $hook['display_override'][] = array(
 	'filename' => 'Develbar.php',
 	'filepath' => 'third_party/DevelBar/hooks',
 );
+
+$hook['post_controller_constructor'][] = array(
+	'class'    => 'SecurityHeaders',
+	'function' => 'apply',
+	'filename' => 'SecurityHeaders.php',
+	'filepath' => 'hooks',
+);

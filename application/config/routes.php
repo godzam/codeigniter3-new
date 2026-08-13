@@ -52,3 +52,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $route['default_controller'] = 'welcome';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
+
+// Shorter URLs for the auth module (application/modules/auth) — plain CI3
+// routing still runs before HMVC's module dispatch, so this works exactly
+// like it would without HMVC installed at all.
+$route['login'] = 'auth/login';
+$route['register'] = 'auth/register';
+$route['logout'] = 'auth/logout';

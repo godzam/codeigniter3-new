@@ -1,0 +1,133 @@
+<?php
+
+defined('BASEPATH') or exit('No direct script access allowed');
+
+/**
+ * Minimal email/password auth with a single 'role' column for basic RBAC
+ * (see application/helpers/auth_helper.php for require_login()/
+ * require_role()). Login attempts are throttled per-IP via Ratelimiter.
+ *
+ * Routes (see application/modules/auth/config/routes.php):
+ *   GET|POST /login
+ *   GET|POST /register
+ *   GET      /logout
+ *
+ * @property User_model $user_model
+ * @property CI_Form_validation $form_validation
+ * @property Ratelimiter $ratelimiter
+ * @property CI_Session $session
+ */
+class Auth extends MX_Controller
+{
+    public function __construct()
+    {
+        parent::__construct();
+        $this->load->model('user_model');
+        $this->load->library(['form_validation', 'ratelimiter', 'session']);
+        $this->load->helper(['form', 'url']);
+    }
+
+    public function login()
+    {
+        if (is_logged_in()) {
+            redirect('/');
+        }
+
+        if ($this->input->method() === 'post') {
+            $this->handle_login();
+
+            return;
+        }
+
+        $this->load->view('login');
+    }
+
+    protected function handle_login()
+    {
+        $this->form_validation->set_rules('email', 'Email', 'required|valid_email');
+        $this->form_validation->set_rules('password', 'Password', 'required');
+
+        if (!$this->form_validation->run()) {
+            $this->load->view('login');
+
+            return;
+        }
+
+        $rate_key = 'login:'.$this->input->ip_address();
+
+        if (!$this->ratelimiter->attempt($rate_key, 5, 60)) {
+            $retry_after = $this->ratelimiter->retry_after($rate_key);
+            $this->load->view('login', ['error' => "Too many attempts. Try again in {$retry_after}s."]);
+
+            return;
+        }
+
+        $user = $this->user_model->find_by_email($this->input->post('email'));
+
+        if (!$user || !password_verify((string) $this->input->post('password'), $user->password)) {
+            $this->load->view('login', ['error' => 'Invalid email or password.']);
+
+            return;
+        }
+
+        $this->ratelimiter->reset($rate_key);
+        $this->log_in_as($user);
+
+        $redirect = $this->session->flashdata('redirect_after_login');
+        redirect($redirect ?: '/');
+    }
+
+    public function register()
+    {
+        if (is_logged_in()) {
+            redirect('/');
+        }
+
+        if ($this->input->method() === 'post') {
+            $this->handle_register();
+
+            return;
+        }
+
+        $this->load->view('register');
+    }
+
+    protected function handle_register()
+    {
+        $this->form_validation->set_rules('name', 'Name', 'required|min_length[2]');
+        $this->form_validation->set_rules('email', 'Email', 'required|valid_email|is_unique[users.email]');
+        $this->form_validation->set_rules('password', 'Password', 'required|min_length[8]');
+
+        if (!$this->form_validation->run()) {
+            $this->load->view('register');
+
+            return;
+        }
+
+        $user_id = $this->user_model->create([
+            'name' => $this->input->post('name'),
+            'email' => $this->input->post('email'),
+            'password' => password_hash((string) $this->input->post('password'), PASSWORD_DEFAULT),
+            'role' => 'user',
+        ]);
+
+        $this->log_in_as($this->user_model->find($user_id));
+        redirect('/');
+    }
+
+    public function logout()
+    {
+        $this->session->sess_destroy();
+        redirect('login');
+    }
+
+    protected function log_in_as($user)
+    {
+        $this->session->set_userdata([
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'user_email' => $user->email,
+            'user_role' => $user->role,
+        ]);
+    }
+}

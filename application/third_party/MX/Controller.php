@@ -35,6 +35,25 @@ require dirname(__FILE__).'/Base.php';
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * $load is a real property (assigned in the constructor below); everything
+ * else here is resolved through __get() proxying to CI::$APP, invisible to
+ * static analysis without this docblock. Module-specific loaded models
+ * (like Example_model) aren't listed — annotate those on the module
+ * controller that actually loads them.
+ *
+ * @property MX_Loader $load
+ * @property CI_Benchmark $benchmark
+ * @property CI_Config $config
+ * @property CI_Hooks $hooks
+ * @property CI_Utf8 $utf8
+ * @property CI_URI $uri
+ * @property MX_Router $router
+ * @property CI_Output $output
+ * @property CI_Security $security
+ * @property CI_Input $input
+ * @property CI_Lang $lang
+ * @property CI_Session $session Autoloaded application-wide (application/config/autoload.php).
  **/
 #[\AllowDynamicProperties]
 class MX_Controller

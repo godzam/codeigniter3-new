@@ -49,6 +49,29 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * @category	Libraries
  * @author		EllisLab Dev Team
  * @link		https://codeigniter.com/userguide3/general/controllers.html
+ *
+ * The properties below are attached at runtime in the constructor (see
+ * is_loaded()/load_class() in Common.php) rather than declared here, which
+ * is invisible to static analysis without this docblock. Not exhaustive —
+ * anything conditionally autoloaded or loaded by specific controllers
+ * (database, custom libraries) should be annotated on the subclass that
+ * actually loads it. $session is the one exception: it's autoloaded
+ * application-wide (application/config/autoload.php), so it's listed here
+ * rather than repeated on every controller.
+ *
+ * @property CI_Benchmark $benchmark
+ * @property CI_Config $config
+ * @property CI_Hooks $hooks
+ * @property CI_Utf8 $utf8
+ * @property CI_URI $uri
+ * @property CI_Router $router
+ * @property CI_Output $output
+ * @property CI_Session $session
+ * @property CI_Security $security
+ * @property CI_Input $input
+ * @property CI_Lang $lang
+ * @property CI_Exceptions $exceptions
+ * @property CI_Log $log
  */
 #[\AllowDynamicProperties]
 class CI_Controller {
@@ -95,7 +118,7 @@ class CI_Controller {
 	 * Get the CI singleton
 	 *
 	 * @static
-	 * @return	object
+	 * @return	CI_Controller
 	 */
 	public static function &get_instance()
 	{

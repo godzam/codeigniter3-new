@@ -70,11 +70,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $active_group = 'default';
 $db['default'] = array(
 	'dsn'	=> '',
-	'hostname' => 'localhost',
-	'username' => 'root',
-	'password' => '',
-	'database' => 'your_database_name',
-	'dbdriver' => 'mysqli',
+	// Each falls back to its hardcoded default if the .env var isn't set —
+	// see .env.example. This lets the same database.php work across
+	// machines without editing it per-environment.
+	'hostname' => getenv('DB_HOST') ?: 'localhost',
+	'username' => getenv('DB_USERNAME') ?: 'root',
+	'password' => getenv('DB_PASSWORD') ?: '',
+	'database' => getenv('DB_DATABASE') ?: 'your_database_name',
+	'dbdriver' => getenv('DB_DRIVER') ?: 'mysqli',
 	'dbprefix' => '',
 	'pconnect' => FALSE,
 	'db_debug' => (ENVIRONMENT !== 'production'),

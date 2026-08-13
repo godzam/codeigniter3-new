@@ -4,9 +4,9 @@
 ![PHP](https://img.shields.io/badge/PHP-8.1%E2%80%938.5-777bb4)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-A ready-to-run [CodeIgniter 3](https://codeigniter.com/userguide3/) starting point for people who want a **classic, lightweight PHP MVC framework** without fighting PHP 8 deprecation warnings, and without spending a day wiring up modules and a dev toolbar by hand.
+A ready-to-run [CodeIgniter 3](https://codeigniter.com/userguide3/) starting point for people who want a **classic, lightweight PHP MVC framework** without fighting PHP 8 deprecation warnings, and without spending a few days wiring up modules, auth, a dev toolbar, and modern tooling by hand.
 
-If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately seen a wall of `Deprecated: Creation of dynamic property` warnings — this fixes that, plus adds two things almost every real project ends up needing: a way to organize code into modules (HMVC), and an in-browser debug toolbar (DevelBar).
+If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately seen a wall of `Deprecated: Creation of dynamic property` warnings — this fixes that, then builds out everything a real project ends up needing on top: modular code organization, login/registration, database migrations, static analysis, and a CI pipeline that actually proves it all works.
 
 ## Table of contents
 
@@ -15,7 +15,11 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 - [Quick start](#quick-start)
 - [Project structure](#project-structure)
 - [Working with HMVC modules](#working-with-hmvc-modules)
+- [Authentication](#authentication)
+- [CLI console (migrations & seeders)](#cli-console-migrations--seeders)
 - [DevelBar](#develbar)
+- [Code quality tooling](#code-quality-tooling)
+- [Docker](#docker)
 - [Troubleshooting](#troubleshooting)
 - [PHP 8.2+ compatibility notes](#php-82-compatibility-notes)
 - [Contributing](#contributing)
@@ -25,33 +29,51 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 
 | | |
 |---|---|
-| **PHP 8.2–8.5 compatible** | CodeIgniter 3's "super object" pattern attaches things like `config`, `benchmark`, and `uri` to controllers/loader/router as properties at *runtime*, which PHP 8.2+ deprecates. This starter declares that pattern explicitly allowed (`#[\AllowDynamicProperties]`) across every core class, so a fresh page load is warning-free. |
+| **PHP 8.2–8.5 compatible** | CodeIgniter 3's "super object" pattern attaches things like `config`, `benchmark`, and the database driver to controllers/loader/router as properties at *runtime*, which PHP 8.2+ deprecates. This starter declares that pattern explicitly allowed (`#[\AllowDynamicProperties]`) across every core class that needs it, so nothing warns. |
 | **HMVC (Modular Extensions)** | Instead of one flat `application/controllers` + `application/models` + `application/views`, group each feature into its own self-contained module: `application/modules/blog/{controllers,models,views}`. Modules can even call each other. A working example ships in `application/modules/example/`. |
-| **DevelBar** | A toolbar docked to the bottom of the page (development only) showing benchmarks, database queries, session data, loaded config, and a per-view memory breakdown — so you're not guessing what a request actually did. |
+| **Authentication** | Email/password register, login, and logout (`application/modules/auth`), password hashing, session-backed `is_logged_in()`/`require_login()`/`require_role()` helpers, and per-IP login rate limiting. Not a full framework — a real, working starting point for your own auth. |
+| **Database migrations & seeders** | CI3's built-in `Migration` library, enabled and wired to a CLI runner, plus a small seeder pattern CI3 doesn't ship with (`application/seeds/`). |
+| **DevelBar** | A toolbar docked to the bottom of the page (development only) showing benchmarks, database queries, session data, loaded config, and a per-view memory breakdown. |
+| **`.env` support** | Optional — every setting that reads from it has a hardcoded fallback, so nothing breaks if `.env` doesn't exist. |
+| **Security defaults** | CSRF protection on, a conservative security-headers hook (CSP, X-Frame-Options, etc.), rate limiting available for any endpoint that needs it. |
+| **Static analysis & style** | PHPStan (level 3, scoped to code this project owns) and PHP-CS-Fixer (PSR-12), both wired as `composer` scripts and in CI. |
+| **Tests** | PHPUnit for the application layer — real unit tests plus HTTP-level feature tests that boot the app as a subprocess — separate from CodeIgniter's own framework test suite in `tests/`. |
+| **Structured logging** | An opt-in Monolog-backed `Logger` library alongside CI3's native `log_message()`, for when you want multiple handlers or structured context. |
+| **`/health` endpoint** | A JSON status endpoint for load balancers/uptime monitors. |
+| **Docker** | `Dockerfile` + `docker-compose.yml` (app + MySQL + phpMyAdmin) for a one-command local environment. |
+| **CI** | GitHub Actions: boots the app and hits real routes on PHP 8.1–8.4, plus separate PHPStan/CS-Fixer/PHPUnit jobs. Dependabot keeps dependencies current. |
 
-None of this is exotic — it's the same combination ([wiredesignz HMVC](https://github.com/5112n4/wiredesignz-codeigniter-modular-extensions) + [DevelBar](https://github.com/JCSama/CodeIgniter-develbar)) that's powered plenty of CodeIgniter 3 apps for years — just vendored in, patched for current PHP, and verified working together.
+None of the vendored pieces are exotic — HMVC and DevelBar are the same libraries ([wiredesignz HMVC](https://github.com/5112n4/wiredesignz-codeigniter-modular-extensions) + [DevelBar](https://github.com/JCSama/CodeIgniter-develbar)) that have powered plenty of CodeIgniter 3 apps for years — just vendored in, patched for current PHP, and verified working together, with modern tooling and a real (if minimal) auth system layered on top.
 
 ## Requirements
 
 - **PHP 8.1 or newer** (this repo is developed against 8.3/8.4 and targets 8.5)
+- **[Composer](https://getcomposer.org/)** — required now (auth, `.env`, logging, and all dev tooling depend on it), unlike a bare CodeIgniter 3 install
 - A web server (Apache, Nginx, [Laragon](https://laragon.org/), [XAMPP](https://www.apachefriends.org/)) — or nothing at all, PHP's built-in server works fine for local development
-- MySQL/MariaDB, or any other database CodeIgniter 3's Query Builder supports — only if your app actually uses a database (the example module doesn't)
+- MySQL/MariaDB, or any other database CodeIgniter 3's Query Builder supports — needed for auth/migrations; the homepage and `/example` module work without one
 
-New to CodeIgniter? The [official CI3 user guide](https://codeigniter.com/userguide3/) is still the best reference for the parts of the framework this starter doesn't change (routing, models, form validation, etc.) — everything here is additive.
+New to CodeIgniter? The [official CI3 user guide](https://codeigniter.com/userguide3/) is still the best reference for the parts of the framework this starter doesn't change (routing, Query Builder, form validation, etc.) — everything here is additive.
 
 ## Quick start
 
-1. **Get the code.**
+1. **Get the code and install dependencies.**
    ```bash
    git clone https://github.com/godzam/codeigniter3-new.git my-app
    cd my-app
+   composer install
    ```
 
-2. **Set up your database config** (skip this if you're just poking around — the homepage and `/example` module don't need a database):
+2. **Set up your database** (skip this if you're just poking around — the homepage and `/example` module don't need one; auth, migrations, and `/health` do):
    ```bash
    cp application/config/database.php.example application/config/database.php
+   cp .env.example .env
    ```
-   Then open `application/config/database.php` and fill in your own `hostname`, `username`, `password`, and `database`.
+   Edit `.env` with your DB credentials, or edit `application/config/database.php` directly — both work, `.env` just avoids editing a tracked-in-spirit config file. Then create the database and run:
+   ```bash
+   php index.php console migrate
+   php index.php console seed
+   ```
+   The seeder creates a default admin (`admin@example.com` / `password`) so there's something to log in with — **change or remove that before deploying anywhere real.**
 
 3. **Run it.** Pick one:
 
@@ -61,11 +83,13 @@ New to CodeIgniter? The [official CI3 user guide](https://codeigniter.com/usergu
      ```
      Then open http://localhost:8000
 
-   - **Apache/Nginx/Laragon/XAMPP** — point your web server's document root at this project's root folder (the one `index.php` lives in), then visit whatever hostname you configured.
+   - **Apache/Nginx/Laragon/XAMPP** — point your web server's document root at this project's root folder (the one `index.php` lives in). A root `.htaccess` handles clean URLs already (needs `mod_rewrite`).
+
+   - **Docker** — see [Docker](#docker) below.
 
 4. **(Optional) Set your base URL.** If you're not using the built-in server on `localhost`, set `$config['base_url']` in `application/config/config.php` — otherwise CodeIgniter will auto-detect it, which usually works fine for local dev.
 
-5. **Confirm it's working.** You should see the default CodeIgniter welcome page, with the DevelBar toolbar docked at the bottom (development mode is on by default — see [DevelBar](#develbar)). Visit `/example` to see a working HMVC module in action.
+5. **Confirm it's working.** You should see the default CodeIgniter welcome page, with DevelBar docked at the bottom (development mode is on by default). Visit `/example` for a working HMVC module, `/register` to create an account, and `/health` for the JSON status check.
 
 That's it — you're up and running. See [CONTRIBUTING.md](CONTRIBUTING.md) if you plan to extend this yourself.
 
@@ -75,19 +99,39 @@ That's it — you're up and running. See [CONTRIBUTING.md](CONTRIBUTING.md) if y
 application/
   config/
     database.php.example    — copy to database.php and fill in your credentials
+    production/              — example of CI3's environment-specific config overrides
   core/
     MY_Loader.php            — extends MX_Loader (HMVC) + per-view memory tracking for DevelBar
     MY_Router.php            — extends MX_Router (HMVC)
+  controllers/
+    Console.php              — CLI-only: migrate, seed
+    Health.php                — GET /health
+  helpers/
+    auth_helper.php           — is_logged_in(), current_user(), require_login(), require_role()
+  libraries/
+    Ratelimiter.php            — fixed-window rate limiting (file cache, no Redis needed)
+    Logger.php                  — opt-in Monolog logging
+    Seeder.php                   — seeder runner (application/seeds/*_seeder.php)
+  hooks/
+    SecurityHeaders.php          — CSP, X-Frame-Options, etc.
+  migrations/                     — CI3 migrations (enabled)
+  seeds/                           — seeder classes
   modules/
-    example/                 — working reference HMVC module (see below), safe to delete
+    example/                       — working reference HMVC module, safe to delete
+    auth/                            — register/login/logout
+  src/                                — Composer-autoloaded App\ namespace for plain PHP classes
   third_party/
-    MX/                      — HMVC (Modular Extensions) library
-    DevelBar/                — dev toolbar
+    MX/                                — HMVC (Modular Extensions) library
+    DevelBar/                           — dev toolbar
 system/
-  core/*.php                 — patched with #[AllowDynamicProperties] for PHP 8.2+
+  core/*.php, database/DB_driver.php, libraries/Driver.php
+                                         — patched with #[AllowDynamicProperties] for PHP 8.2+
+tests-app/                               — PHPUnit for application code (not CI3's own tests/)
+phpstan.neon.dist, .php-cs-fixer.dist.php — static analysis / style config
+Dockerfile, docker-compose.yml            — containerized dev environment
 ```
 
-Everything else (`application/controllers`, `application/models`, `application/views`, `application/helpers`, etc.) works exactly like a normal, unmodified CodeIgniter 3 install — this starter only *adds* capability, it doesn't take anything away.
+Everything else (`application/models`, `application/views`, `application/helpers`, etc.) works exactly like a normal, unmodified CodeIgniter 3 install — this starter only *adds* capability, it doesn't take anything away.
 
 ## Working with HMVC modules
 
@@ -125,15 +169,81 @@ A few things worth knowing:
 - Hitting `/blog` routes straight to the module controller — no extra routing config needed.
 - Call one module from another (or from inside a view) with `Modules::run('blog/index')`, or `$this->load->module('blog')` to load it as an object and call its methods directly.
 - Cross-module loading works too: `$this->load->model('blog/blog_model')` loads a model that lives in a *different* module.
+- A model that queries the database needs to load it itself — see `application/modules/auth/models/User_model.php`'s constructor for the pattern (don't rely on the caller remembering to pass a connect flag).
 - Delete `application/modules/example/` once you don't need the reference anymore — it's a teaching example, not something meant to ship in a real app.
 
 See [`application/third_party/MX/Controller.php`](application/third_party/MX/Controller.php) for the full API (autoloading per-module, view partials, etc.), or the [upstream fork's docs](https://github.com/5112n4/wiredesignz-codeigniter-modular-extensions) for the original write-up.
 
+## Authentication
+
+`application/modules/auth` is a minimal but real email/password system:
+
+- `GET`/`POST /register`, `GET`/`POST /login`, `GET /logout` (short URLs — see `application/config/routes.php`)
+- Passwords hashed with `password_hash()`/`password_verify()`
+- Login attempts throttled at 5 per 60 seconds per IP (`application/libraries/Ratelimiter.php`)
+- A single `role` column on `users` (seeded default: `user`; the seeded admin gets `admin`) for basic access control
+
+Use it from any controller via `application/helpers/auth_helper.php` (autoloaded — no `$this->load->helper()` needed):
+
+```php
+require_login();               // redirect to /login if not authenticated
+require_role('admin');         // require_login() + 403 if the role doesn't match
+is_logged_in();                // bool
+current_user();                // array or null: id, name, email, role
+has_role('admin');             // bool
+```
+
+The `users` table comes from `application/migrations/20260813120000_create_users_table.php` — run `php index.php console migrate` to create it. This is intentionally minimal (no password reset, no email verification, no OAuth) — extend `application/modules/auth/controllers/Auth.php` for anything beyond that.
+
+## CLI console (migrations & seeders)
+
+CodeIgniter 3 has no built-in artisan-like CLI. `application/controllers/Console.php` is the idiomatic CI3 way to get one — a normal controller invoked from the command line instead of over HTTP, refusing to run any other way:
+
+```bash
+php index.php console migrate          # run pending migrations
+php index.php console seed             # run every application/seeds/*_seeder.php
+php index.php console seed users       # run one seeder by name
+```
+
+Add a migration with CI3's normal `CI_Migration` API in `application/migrations/`. Add a seeder by creating `application/seeds/<name>_seeder.php` with a class extending `CI_Seeder` and implementing `run()` — see `application/seeds/users_seeder.php`.
+
 ## DevelBar
 
-- Enabled by default whenever `ENVIRONMENT === 'development'` (that's the default — see `index.php` — unless a `CI_ENV` server variable says otherwise). Toggle it in `application/third_party/DevelBar/config/develbar.php` (`$config['enable_develbar']`).
-- If your app grows a real auth system, you can extend the gate to also show DevelBar for a super-admin account in production — see the comment in that config file for exactly how, and use whatever your app's *actual* super-admin check is, not a guess.
-- Sections available: Benchmarks, Memory Usage (with a per-view breakdown — click it to see which views ate the most memory), Request, Database, Hooks, Models, Libraries, Helpers, Views, Config, Session, and Ajax (live request inspection).
+- Enabled by default whenever `ENVIRONMENT === 'development'` (that's the default — see `index.php` — unless a `CI_ENV` variable says otherwise). Toggle it in `application/third_party/DevelBar/config/develbar.php` (`$config['enable_develbar']`).
+- You can extend the gate to also show DevelBar for your seeded admin account in production — see the comment in that config file for exactly how, using `has_role('admin')` from the auth helper (or your own check) rather than a guess.
+- Sections available: Benchmarks, Memory Usage (with a per-view breakdown), Request, Database, Hooks, Models, Libraries, Helpers, Views, Config, Session, and Ajax (live request inspection).
+
+## Code quality tooling
+
+All wired as Composer scripts and run in CI:
+
+```bash
+composer analyze     # PHPStan (level 3), scoped to application/ code this project owns
+composer cs-check     # PHP-CS-Fixer, dry run
+composer cs-fix        # PHP-CS-Fixer, applies fixes
+composer test            # PHPUnit — tests-app/, not CI3's own tests/
+composer serve             # php -S localhost:8000
+```
+
+Scope is deliberate: `system/`, `application/third_party/`, and CI3's own `tests/` are vendored/framework code this project doesn't own — linting or type-checking it would just be noise and make it harder to diff against upstream if it's ever re-vendored. See `phpstan.neon.dist` and `.php-cs-fixer.dist.php` for the exact paths.
+
+CodeIgniter 3's dynamic "super object" pattern means PHPStan needs a bit of help knowing what `$this->load`, `$this->db`, etc. actually are — see the `@property` docblocks on `CI_Controller`, `CI_Model`, `MX_Controller`, and individual controllers/models for how that's handled. Follow the same pattern in your own code and PHPStan stays useful instead of noisy.
+
+## Docker
+
+```bash
+docker compose up --build
+```
+
+Starts the app on http://localhost:8080, MySQL on `3306`, and phpMyAdmin on http://localhost:8081 (user `root`, password `secret` — this is a local dev default, change it for anything beyond your own machine). The container copies `database.php.example` to `database.php` automatically and reads connection details from `docker-compose.yml`'s `environment:` block via the same `getenv()` fallback pattern `.env` uses locally — no extra config needed to get a working database inside the container.
+
+Run migrations/seeders inside the running container:
+```bash
+docker compose exec app php index.php console migrate
+docker compose exec app php index.php console seed
+```
+
+> **Note:** the Docker setup follows the same patterns verified elsewhere in this README (env-var-driven config, the migrate/seed CLI, the smoke-tested routes) but wasn't run end-to-end in a container during development of this starter — there was no Docker runtime available in that environment. Sanity-check it (`docker compose up --build`, then hit `/health`) before relying on it for anything real, and please open an issue if something doesn't match.
 
 ## Troubleshooting
 
@@ -141,26 +251,34 @@ See [`application/third_party/MX/Controller.php`](application/third_party/MX/Con
 Turn on PHP error display and check your PHP version (`php -v`) — this starter needs 8.1+. If you're on shared hosting, check its error log; `display_errors` is often off by default there.
 
 **"Deprecated: Creation of dynamic property" warnings are back.**
-This usually means `system/core/` got replaced with a fresh, unpatched CodeIgniter 3 download. See [PHP 8.2+ compatibility notes](#php-82-compatibility-notes) below.
+This usually means `system/` got replaced with a fresh, unpatched CodeIgniter 3 download. See [PHP 8.2+ compatibility notes](#php-82-compatibility-notes) below.
+
+**"Class not found" / autoload errors right after cloning.**
+Run `composer install` — it's required now, not optional (auth, `.env`, and dev tooling all depend on the Composer autoloader).
 
 **Database connection errors on a page that doesn't even use the database.**
-Make sure `application/config/database.php` exists (step 2 of [Quick start](#quick-start)) — CodeIgniter fatals if a controller loads the `database` library and the config file is missing, even if that library call happens somewhere unexpected (an autoloaded library, for instance).
+Make sure `application/config/database.php` exists (step 2 of [Quick start](#quick-start)) — CodeIgniter fatals if a controller loads the `database` library and the config file is missing. Auth (`/login`, `/register`) and `/health` both load it.
 
 **DevelBar isn't showing up.**
-Check `ENVIRONMENT` — it only shows in `development` by default. `index.php` sets this from the `CI_ENV` server variable if present, otherwise defaults to `development`.
+Check `ENVIRONMENT` — it only shows in `development` by default.
+
+**Login says "Too many attempts."**
+That's the rate limiter (5 attempts/60s per IP) — wait it out, or clear `application/cache/` locally.
 
 **I want clean URLs without `index.php` in them.**
-That's standard CodeIgniter 3 `.htaccess`/URL rewriting, unrelated to anything in this starter — see the [CI3 URLs guide](https://codeigniter.com/userguide3/general/urls.html).
+Already set up — a root `.htaccess` handles the rewrite, and `application/config/config.php` already has `index_page` set accordingly. If your server doesn't have `mod_rewrite`, set `$config['index_page'] = 'index.php'` there instead (see the comment in `.htaccess`).
 
 ## PHP 8.2+ compatibility notes
 
-If you ever re-vendor a fresh copy of CodeIgniter 3's `system/` directory (upgrading to a newer point release, for instance), you'll need to reapply `#[\AllowDynamicProperties]` to these 15 classes in `system/core/*.php` — it's a patch on top of upstream CI3, not part of it:
+If you ever re-vendor a fresh copy of CodeIgniter 3's `system/` directory (upgrading to a newer point release, for instance), you'll need to reapply `#[\AllowDynamicProperties]` in three places — patches on top of upstream CI3, not part of it:
 
-`URI`, `Router`, `Controller`, `Loader`, `Model`, `Input`, `Config`, `Exceptions`, `Hooks`, `Log`, `Utf8`, `Lang`, `Benchmark`, `Security`, `Output`
+- All 15 classes in `system/core/*.php`: `URI`, `Router`, `Controller`, `Loader`, `Model`, `Input`, `Config`, `Exceptions`, `Hooks`, `Log`, `Utf8`, `Lang`, `Benchmark`, `Security`, `Output`
+- `system/database/DB_driver.php`'s `CI_DB_driver` (covers every DB driver through inheritance) — only throws once something actually connects to the database, so it's easy to miss on a quick check
+- `system/libraries/Driver.php`'s `CI_Driver_Library` (covers `CI_Cache` and any other driver-composite library) — only throws once a driver (e.g. the file cache used by `Ratelimiter`) actually loads
 
 ## Contributing
 
-Bug reports, fixes, and improvements are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, how to add a module, code style, and what to manually verify before opening a PR (there's no automated test suite for the application layer).
+Bug reports, fixes, and improvements are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, how to add a module, code style, and what to run before opening a PR.
 
 ## License & credits
 

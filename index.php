@@ -38,6 +38,27 @@
 
 /*
  *---------------------------------------------------------------
+ * LOAD ENVIRONMENT VARIABLES FROM .env (OPTIONAL)
+ *---------------------------------------------------------------
+ *
+ * If a .env file exists (copy .env.example to get started), its
+ * variables become available via getenv()/$_ENV — e.g. DB_HOST,
+ * DB_USERNAME, CI_ENV. Safe to skip entirely: nothing here requires
+ * a .env file to exist, and config files fall back to their own
+ * hardcoded defaults when a variable isn't set.
+ */
+	if (is_file(__DIR__.'/vendor/autoload.php'))
+	{
+		require_once __DIR__.'/vendor/autoload.php';
+
+		if (class_exists('Dotenv\\Dotenv') && is_file(__DIR__.'/.env'))
+		{
+			Dotenv\Dotenv::createImmutable(__DIR__)->safeLoad();
+		}
+	}
+
+/*
+ *---------------------------------------------------------------
  * APPLICATION ENVIRONMENT
  *---------------------------------------------------------------
  *
@@ -51,9 +72,14 @@
  *     testing
  *     production
  *
+ * Checked in order: the CI_ENV server variable, then a CI_ENV value
+ * from .env, then 'development' as the final fallback.
+ *
  * NOTE: If you change these, also change the error_reporting() code below
  */
-	define('ENVIRONMENT', isset($_SERVER['CI_ENV']) ? $_SERVER['CI_ENV'] : 'development');
+	$_ci_env = $_SERVER['CI_ENV'] ?? (getenv('CI_ENV') ?: null);
+	define('ENVIRONMENT', $_ci_env ?? 'development');
+	unset($_ci_env);
 
 /*
  *---------------------------------------------------------------

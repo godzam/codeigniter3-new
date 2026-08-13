@@ -1,5 +1,6 @@
 <?php
-defined('BASEPATH') OR exit('No direct script access allowed');
+
+defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
  * Deliberately doesn't touch $this->db — so this module works right after
@@ -8,12 +9,12 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  */
 class Example_model extends CI_Model
 {
-	public function get_sample_items()
-	{
-		return array(
-			'HMVC modules live under application/modules/<name>/',
-			'Each module has its own controllers/, models/, views/',
-			'This page is application/modules/example/views/index.php',
-		);
-	}
+    public function get_sample_items()
+    {
+        return [
+            'HMVC modules live under application/modules/<name>/',
+            'Each module has its own controllers/, models/, views/',
+            'This page is application/modules/example/views/index.php',
+        ];
+    }
 }

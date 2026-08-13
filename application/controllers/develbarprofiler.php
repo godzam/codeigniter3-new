@@ -32,12 +32,14 @@
  * @since    Version 0.1
  * @filesource
  */
+/**
+ * @property CI_Cache $cache Assigned dynamically by $this->load->driver('cache', ...) below.
+ */
 class DevelBarProfiler extends CI_Controller
 {
-
     /**
      * @param $profilerId
-     * @return string
+     * @return void
      */
     public function profil($profilerId)
     {
@@ -47,15 +49,15 @@ class DevelBarProfiler extends CI_Controller
             redirect();
         }
 
-        $this->load->driver('cache', array('adapter' => 'file', 'key_prefix' => 'ci_toolbar_profiler_'));
+        $this->load->driver('cache', ['adapter' => 'file', 'key_prefix' => 'ci_toolbar_profiler_']);
         $profiler = $this->cache->get($profilerId);
 
-        $this->load->helper(array('language', 'utility'));
+        $this->load->helper(['language', 'utility']);
         $this->load_lang_file();
 
-        $data = array(
-            'profiler' => $profiler
-        );
+        $data = [
+            'profiler' => $profiler,
+        ];
 
         $this->load->view('develbar/profiler', $data);
     }

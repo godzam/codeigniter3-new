@@ -1,0 +1,15 @@
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	# If you host this in a subdirectory, add a RewriteBase line here.
+	RewriteCond %{REQUEST_FILENAME} !-f
+	RewriteCond %{REQUEST_FILENAME} !-d
+	RewriteRule ^(.*)$ index.php/$1 [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+	# mod_rewrite isn't available — fall back to index.php in the URL by
+	# setting $config['index_page'] = 'index.php' in
+	# application/config/config.php (it currently expects mod_rewrite and
+	# is set to '').
+	ErrorDocument 404 index.php
+</IfModule>
