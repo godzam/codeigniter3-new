@@ -16,6 +16,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 - [Project structure](#project-structure)
 - [Working with HMVC modules](#working-with-hmvc-modules)
 - [Authentication](#authentication)
+- [Error handling](#error-handling)
 - [CLI console (migrations & seeders)](#cli-console-migrations--seeders)
 - [DevelBar](#develbar)
 - [Code quality tooling](#code-quality-tooling)
@@ -38,6 +39,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 | **Security defaults** | CSRF protection on, a conservative security-headers hook (CSP, X-Frame-Options, etc.), rate limiting available for any endpoint that needs it. |
 | **Static analysis & style** | PHPStan (level 3, scoped to code this project owns) and PHP-CS-Fixer (PSR-12), both wired as `composer` scripts and in CI. |
 | **Tests** | PHPUnit for the application layer — real unit tests plus HTTP-level feature tests that boot the app as a subprocess — separate from CodeIgniter's own framework test suite in `tests/`. |
+| **Custom error handling** | CI4/Laravel-style: a detailed exception page in development (stack trace with code snippets, request data, editor links), clean per-status-code error pages in production instead of a blank screen, JSON errors for API requests, and `abort(404)` / `abort_if()` / `abort_unless()` helpers. |
 | **Structured logging** | An opt-in Monolog-backed `Logger` library alongside CI3's native `log_message()`, for when you want multiple handlers or structured context. |
 | **`/health` endpoint** | A JSON status endpoint for load balancers/uptime monitors. |
 | **Docker** | `Dockerfile` + `docker-compose.yml` (app + MySQL + phpMyAdmin) for a one-command local environment. |
@@ -194,6 +196,37 @@ has_role('admin');             // bool
 ```
 
 The `users` table comes from `application/migrations/20260813120000_create_users_table.php` — run `php index.php console migrate` to create it. This is intentionally minimal (no password reset, no email verification, no OAuth) — extend `application/modules/auth/controllers/Auth.php` for anything beyond that.
+
+## Error handling
+
+Stock CI3 shows uncaught exceptions as a small inline box in development and a **blank page** in production. This starter replaces that with CI4/Laravel-style error handling (`application/core/MY_Exceptions.php`):
+
+| | Development (`display_errors` on) | Production / testing |
+|---|---|---|
+| Uncaught exception or fatal error | Full debug page: exception + "caused by" chain, stack trace with code snippets, request/headers/session, app info, recent DB queries | `500 \| Server Error` page |
+| `abort()`, `show_404()`, `show_error()`, CSRF failure | Error page for that status code | Error page for that status code |
+| AJAX / `Accept: application/json` request | JSON error (with exception, file, line, trace) | JSON error (`status`, `error`, `message`) |
+
+**Stop a request with an HTTP error** from anywhere — controller, model, library:
+
+```php
+abort(404);                                   // 404 page
+abort(403, 'You cannot edit this post.');     // message is shown to the user
+abort_if(! $post, 404, 'Post not found.');
+abort_unless(has_role('admin'), 403);
+abort(503, '', ['Retry-After' => '120']);     // extra response headers
+
+throw \App\Exceptions\PageNotFoundException::forPageNotFound(); // CI4 style
+throw new \App\Exceptions\HttpException(409, 'Already exists.');
+```
+
+HTTP exceptions below 500 are not written to the error log; everything else is logged with its stack trace (subject to `log_threshold`).
+
+**Customize the pages** in `application/views/errors/html/`, the same way as Laravel's `resources/views/errors/`: the handler uses `{status}.php` (e.g. `404.php`), then `4xx.php`/`5xx.php`, then `minimal.php`. Add `402.php`, `4xx.php`, etc. and they're picked up automatically. Each view gets `$status_code`, `$status_text`, and `$message`. The development page is `debug.php`.
+
+**Settings** live in `application/config/errors.php`: force debug mode on/off (default: follows `display_errors`), the editor that file links open in (`vscode`, `phpstorm`, `sublime`, … — or `ERROR_EDITOR` in `.env`), exception classes not to log, and which request/session keys are masked on the debug page. Never enable debug mode in production.
+
+To go back to CI3's stock error handling, remove the `require_once APPPATH.'core/error_handlers.php';` line from `index.php` and delete `application/core/MY_Exceptions.php`.
 
 ## CLI console (migrations & seeders)
 
