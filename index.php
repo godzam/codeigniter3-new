@@ -76,7 +76,11 @@
 
 		if (class_exists('Dotenv\\Dotenv') && is_file(__DIR__.'/.env'))
 		{
-			Dotenv\Dotenv::createImmutable(__DIR__)->safeLoad();
+			// createUnsafeImmutable() also fills getenv(), which the config
+			// files read (e.g. getenv('DB_HOST') in database.php). Plain
+			// createImmutable() only sets $_ENV/$_SERVER, so every value in
+			// .env was silently ignored and the hardcoded fallbacks used.
+			Dotenv\Dotenv::createUnsafeImmutable(__DIR__)->safeLoad();
 		}
 	}
 
