@@ -40,3 +40,8 @@ user_guide_src/cilexer/pycilexer.egg-info/*
 *.sublime-project
 /tests/tests/
 /tests/results/
+
+# Uploaded files (keep the folder and its safety files)
+/uploads/*
+!/uploads/.htaccess
+!/uploads/index.html

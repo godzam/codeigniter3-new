@@ -54,8 +54,12 @@ class Users extends MX_Controller
         };
 
         $this->datatable
-            ->from(static function ($db) {
+            ->from(static function ($db) use ($viewerIsSuper) {
                 $db->from('users u');
+                // super_admin is for the developers: other users never see those accounts.
+                if (!$viewerIsSuper) {
+                    $db->where('u.role !=', RoleRules::SUPER_ADMIN);
+                }
             })
             ->select('u.id, u.name, u.email, u.role, u.created_at')
             ->column('name', 'u.name')

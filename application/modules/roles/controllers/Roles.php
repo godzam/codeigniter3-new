@@ -55,13 +55,18 @@ class Roles extends MX_Controller
 
         $canEdit = can('roles.edit');
         $canDelete = can('roles.delete');
+        $viewerIsSuper = is_super_admin();
         $e = static function ($v) {
             return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         };
 
         $this->datatable
-            ->from(static function ($db) {
+            ->from(static function ($db) use ($viewerIsSuper) {
                 $db->from('roles r');
+                // super_admin is for the developers: other users never see that role.
+                if (!$viewerIsSuper) {
+                    $db->where('r.slug !=', RoleRules::SUPER_ADMIN);
+                }
             })
             ->select(
                 'r.slug, r.name, r.description, r.is_system, r.is_default,
@@ -118,6 +123,9 @@ class Roles extends MX_Controller
         require_permission('roles.view');
 
         $role = $this->rbac->find_role($slug);
+        if ($role && RoleRules::isSuperAdmin($role['slug']) && !is_super_admin()) {
+            $role = null; // developers only: looks like it does not exist
+        }
         if (!$role) {
             show_404();
         }

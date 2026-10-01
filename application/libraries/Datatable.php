@@ -112,12 +112,14 @@ class Datatable
     /**
      * Runs the queries and returns DataTables' JSON structure.
      *
-     * @param callable   $format  row array => associative array of cell HTML keyed by column name
-     * @param array|null $request defaults to $_GET
+     * @param callable      $format  row array => associative array of cell HTML keyed by column name
+     * @param array|null    $request defaults to $_GET
+     * @param callable|null $prepare called once with the page's rows before formatting
+     *                               (look up labels for all of them in one query)
      *
      * @return array<string, mixed>
      */
-    public function build(callable $format, $request = null)
+    public function build(callable $format, $request = null, ?callable $prepare = null)
     {
         $request = $request ?? $this->CI->input->get();
         $request = is_array($request) ? $request : [];
@@ -144,6 +146,10 @@ class Datatable
         }
         $rows = $db->limit($params->length, $params->start)->get()->result_array();
 
+        if ($prepare !== null) {
+            $prepare($rows);
+        }
+
         $data = [];
         foreach ($rows as $row) {
             $cells = $format($row);
@@ -165,10 +171,10 @@ class Datatable
     /**
      * build() + send it as JSON.
      */
-    public function respond(callable $format)
+    public function respond(callable $format, ?callable $prepare = null)
     {
         $json = json_encode(
-            $this->build($format),
+            $this->build($format, null, $prepare),
             JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_PARTIAL_OUTPUT_ON_ERROR
         );
 

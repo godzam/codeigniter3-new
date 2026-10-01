@@ -257,3 +257,9 @@ table.app-datatable > tbody > tr.child span.dtr-data { flex: 1 1 10rem; min-widt
 	.dt-container .dt-search input { width: 16rem; }
 	.dt-container .dt-info { text-align: start; }
 }
+
+/* ---- CRUD generator pages ------------------------------------------------ */
+.crud-thumb { width: 2.5rem; height: 2.5rem; object-fit: cover; border-radius: var(--bs-border-radius-sm); border: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); }
+.crud-thumb-lg { width: 4rem; height: 4rem; }
+.crud-checklist { max-height: 12rem; overflow-y: auto; }
+.g-field .card-header { background: var(--bs-tertiary-bg); }

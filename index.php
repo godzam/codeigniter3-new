@@ -52,7 +52,8 @@
 	if (PHP_SAPI === 'cli-server')
 	{
 		$_ci_path = rawurldecode((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH));
-		if (strpos($_ci_path, '/assets/') === 0 && strpos($_ci_path, '..') === FALSE && is_file(__DIR__.$_ci_path))
+		if ((strpos($_ci_path, '/assets/') === 0 || strpos($_ci_path, '/uploads/') === 0)
+			&& strpos($_ci_path, '..') === FALSE && ! preg_match('/\.(php[0-9]?|phtml|phar)$/i', $_ci_path) && is_file(__DIR__.$_ci_path))
 		{
 			return FALSE;
 		}
