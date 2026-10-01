@@ -3,9 +3,10 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
- * Minimal email/password auth with a single 'role' column for basic RBAC
- * (see application/helpers/auth_helper.php for require_login()/
- * require_role()). Login attempts are throttled per-IP via Ratelimiter.
+ * Minimal email/password auth. Each user has one role (users.role); what a
+ * role may do is managed on the Roles page (see application/libraries/Rbac.php
+ * and can()/require_permission() in application/helpers/auth_helper.php).
+ * Login attempts are throttled per-IP via Ratelimiter.
  *
  * Routes (see application/modules/auth/config/routes.php):
  *   GET|POST /login
@@ -18,6 +19,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * @property CI_Session $session
  * @property Template $template
  * @property Turnstile $turnstile
+ * @property Rbac $rbac
  */
 class Auth extends MX_Controller
 {
@@ -122,7 +124,7 @@ class Auth extends MX_Controller
             'name' => $this->input->post('name'),
             'email' => $this->input->post('email'),
             'password' => password_hash((string) $this->input->post('password'), PASSWORD_DEFAULT),
-            'role' => 'user',
+            'role' => $this->rbac->default_role_slug(), // set on the Roles page
         ]);
 
         $this->log_in_as($this->user_model->find($user_id));

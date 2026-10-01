@@ -111,21 +111,36 @@
 .navbar-filled .breadcrumb a:hover { color: var(--app-primary-contrast); }
 .navbar-filled .btn-outline-secondary { --bs-btn-color: var(--app-primary-contrast); --bs-btn-border-color: var(--bs-navbar-color); --bs-btn-hover-bg: transparent; --bs-btn-hover-color: var(--app-primary-contrast); --bs-btn-hover-border-color: var(--app-primary-contrast); }
 
-/* ---- Layout ----------------------------------------------------------- */
+/* ---- Layout (mobile first) -------------------------------------------
+ * The base rules are the phone layout: the sidebar is an off-canvas drawer
+ * opened by the hamburger button. Wider screens are layered on with
+ * min-width queries, never the other way around.
+ */
+html { -webkit-text-size-adjust: 100%; }
+body { overflow-x: hidden; }
+img, svg, video { max-width: 100%; }
+
 .brand-name { font-weight: 600; }
 .brand-initial { display: none; font-weight: 700; }
 
-.admin-shell { min-height: 100vh; }
+.admin-shell { min-height: 100vh; min-height: 100dvh; }
 .admin-sidebar {
-	--sidebar-width: 15rem;
+	--sidebar-width: min(17rem, 85vw);
 	width: var(--sidebar-width);
 	flex: 0 0 var(--sidebar-width);
 	background: var(--bs-tertiary-bg);
 	border-right: 1px solid var(--bs-border-color);
+	position: fixed; z-index: 1045; top: 0; bottom: 0; left: 0;
+	overflow-y: auto; overscroll-behavior: contain;
+	padding-bottom: env(safe-area-inset-bottom);
+	transform: translateX(-100%); visibility: hidden;
+	transition: transform .2s ease, visibility 0s linear .2s;
 }
+.admin-sidebar.show { transform: none; visibility: visible; transition-delay: 0s; box-shadow: 0 0 2rem rgba(0, 0, 0, .35); }
 .admin-sidebar .nav-link {
 	color: var(--bs-body-color);
 	display: flex; align-items: center; gap: .75rem;
+	min-height: 2.75rem; /* comfortable tap target */
 	padding: .55rem .9rem;
 	border-radius: var(--bs-border-radius);
 }
@@ -134,18 +149,51 @@
 .admin-sidebar .nav-link i { font-size: 1.1rem; }
 .admin-sidebar .nav-section { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--bs-secondary-color); padding: .75rem .9rem .25rem; }
 
-[data-sidebar=compact] .admin-sidebar { --sidebar-width: 4.25rem; }
+.sidebar-backdrop {
+	position: fixed; inset: 0; z-index: 1040; background: rgba(0, 0, 0, .45);
+	opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s linear .2s;
+}
+.sidebar-backdrop.show { opacity: 1; visibility: visible; transition-delay: 0s; }
+body.sidebar-open { overflow: hidden; }
+
+.admin-topbar { min-height: 3.5rem; padding-top: env(safe-area-inset-top); gap: .5rem; flex-wrap: nowrap; }
+.admin-topbar .breadcrumb { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; font-size: .9rem; }
+.admin-topbar .breadcrumb-item:not(.active) { display: none; } /* phones: only the current page */
+.admin-topbar .breadcrumb-item.active { overflow: hidden; text-overflow: ellipsis; padding-left: 0; }
+.admin-topbar .breadcrumb-item.active::before { display: none; }
+.admin-main { padding: 1rem .75rem; }
+.admin-main > div > h1 { font-size: 1.35rem; margin-bottom: 1rem !important; }
+
+/* Buttons are easier to hit on touch screens. */
+@media (pointer: coarse) {
+	.btn:not(.btn-sm):not(.btn-lg) { min-height: 2.5rem; }
+	.form-control, .form-select { min-height: 2.5rem; }
+}
+/* iOS zooms into inputs below 16px. */
+@media (max-width: 575.98px) {
+	.form-control, .form-select, .form-control-sm, .form-select-sm { font-size: 1rem; }
+}
+
+@media (min-width: 576px) {
+	.admin-main { padding: 1.25rem; }
+	.admin-main > div > h1 { font-size: 1.5rem; margin-bottom: 1.25rem !important; }
+	.admin-topbar .breadcrumb-item:not(.active) { display: block; }
+	.admin-topbar .breadcrumb-item.active::before { display: inline-block; }
+}
 @media (min-width: 992px) {
+	.admin-sidebar {
+		position: sticky; top: 0; height: 100vh; height: 100dvh; align-self: flex-start;
+		transform: none; visibility: visible; box-shadow: none; --sidebar-width: 15rem;
+	}
+	.admin-main { padding: 1.5rem; }
+	.sidebar-backdrop { display: none; }
+	[data-sidebar=compact] .admin-sidebar { --sidebar-width: 4.25rem; }
 	[data-sidebar=compact] .admin-sidebar .nav-label,
 	[data-sidebar=compact] .admin-sidebar .brand-name,
 	[data-sidebar=compact] .admin-sidebar .nav-section { display: none; }
 	[data-sidebar=compact] .admin-sidebar .brand-initial { display: inline; }
 	[data-sidebar=compact] .admin-sidebar > a:first-child { justify-content: center; padding-left: 0 !important; padding-right: 0 !important; }
 	[data-sidebar=compact] .admin-sidebar .nav-link { justify-content: center; }
-}
-@media (max-width: 991.98px) {
-	.admin-sidebar { position: fixed; z-index: 1045; top: 0; bottom: 0; left: 0; transform: translateX(-100%); transition: transform .2s; }
-	.admin-sidebar.show { transform: none; box-shadow: 0 0 2rem rgba(0, 0, 0, .35); }
 }
 
 .auth-card { width: 100%; max-width: 26rem; }
@@ -154,3 +202,58 @@
 .settings-color input[type=color] { width: 3rem; height: 2.4rem; padding: .15rem; flex: 0 0 auto; }
 
 .theme-preview .btn, .theme-preview .badge, .theme-preview .alert { margin: 0 .25rem .25rem 0; }
+
+/* ---- DataTables (mobile first) -----------------------------------------
+ * Phone: search on its own full-width row, then rows-per-page, the table,
+ * the record count and a short pager, each centered. Columns that don't fit
+ * fold into an expandable row (Responsive extension, driven by the
+ * data-priority set in datatable_table()). From 576px up the controls sit
+ * side by side.
+ */
+.app-datatable { margin-bottom: 0 !important; }
+.dt-container { --dt-gap: .5rem; }
+.dt-container > .row { --bs-gutter-x: 0; margin: .5rem 0; gap: var(--dt-gap); align-items: center; }
+.dt-container > .row > [class*=dt-layout-] { width: auto; max-width: 100%; padding: 0; }
+.dt-container > .row > .dt-layout-full { width: 100%; }
+/* Top row on a phone: search takes the width, rows-per-page sits beside it. */
+.dt-container > .row:first-child { flex-wrap: wrap; }
+.dt-container > .row:first-child > .dt-layout-start { order: 2; flex: 0 0 auto; }
+.dt-container > .row:first-child > .dt-layout-end { order: 1; flex: 1 1 10rem; }
+/* Bottom row on a phone: record count over the pager, both centered. */
+.dt-container > .row:last-child { flex-direction: column; }
+.dt-container > .row:last-child > [class*=dt-layout-] { width: 100%; justify-content: center !important; }
+.dt-container .dt-search { display: flex; width: 100%; margin: 0; }
+.dt-container .dt-search label { display: none; }
+.dt-container .dt-search input { margin: 0 !important; width: 100%; }
+.dt-container .dt-length { display: flex; align-items: center; gap: .5rem; }
+.dt-container .dt-length select { width: auto; margin: 0 !important; }
+.dt-container .dt-length label { display: none; }
+.dt-container .dt-info { text-align: center; padding: 0; color: var(--bs-secondary-color); font-size: .875rem; }
+.dt-container .dt-paging { display: flex; justify-content: center; }
+.dt-container .dt-paging .pagination { margin: 0; flex-wrap: wrap; justify-content: center; }
+.dt-container .dt-paging .page-link { min-width: 2.5rem; text-align: center; }
+.dt-container > .row.dt-layout-table { overflow-x: auto; display: block; }
+.dt-container > .row.dt-layout-table > * { width: 100%; }
+.dt-container .dt-processing { z-index: 2; background: var(--bs-body-bg); border-radius: var(--bs-border-radius); padding: .5rem 1rem; box-shadow: var(--bs-box-shadow); }
+
+table.app-datatable > tbody > tr > td { vertical-align: middle; }
+/* Expand arrow (a CSS triangle in the library's stylesheet): tint it, and give the cell a finger-sized hit area. */
+table.app-datatable > tbody > tr > td.dtr-control { cursor: pointer; }
+table.app-datatable > tbody > tr > td.dtr-control::before { border-left-color: var(--bs-primary) !important; }
+table.app-datatable > tbody > tr.dtr-expanded > td.dtr-control::before { border-top-color: var(--bs-primary) !important; border-left-color: transparent !important; }
+table.app-datatable > tbody > tr.child ul.dtr-details { display: block; width: 100%; }
+table.app-datatable > tbody > tr.child ul.dtr-details > li { display: flex; flex-wrap: wrap; gap: .25rem .75rem; padding: .5rem 0; border-bottom: 1px solid var(--bs-border-color-translucent); }
+table.app-datatable > tbody > tr.child span.dtr-title { flex: 0 0 6rem; font-weight: 600; }
+table.app-datatable > tbody > tr.child span.dtr-data { flex: 1 1 10rem; min-width: 0; }
+/* Role cell: the select shouldn't be squeezed on small screens. */
+.users-role-cell form { min-width: 12rem; }
+
+@media (min-width: 576px) {
+	.dt-container > .row:first-child > .dt-layout-start { order: 0; }
+	.dt-container > .row:first-child > .dt-layout-end { order: 0; flex: 0 0 auto; margin-left: auto; }
+	.dt-container > .row:last-child { flex-direction: row; justify-content: space-between; }
+	.dt-container > .row:last-child > [class*=dt-layout-] { width: auto; }
+	.dt-container .dt-search { width: auto; }
+	.dt-container .dt-search input { width: 16rem; }
+	.dt-container .dt-info { text-align: start; }
+}

@@ -107,6 +107,9 @@ class Template
             $view = $module.'/'.$view;
         }
 
-        return $this->vars + ['content' => $this->CI->load->view($view, $data, true)];
+        // Render the view first: it may call add_head()/add_foot() (e.g. datatable_table()).
+        $content = $this->CI->load->view($view, $data, true);
+
+        return $this->vars + ['content' => $content];
     }
 }

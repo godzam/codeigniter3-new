@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 /**
- * Seeds one default admin so there's something to log in with locally.
+ * Seeds one default super admin so there's something to log in with locally.
  *
  * SECURITY: change or remove this before deploying anywhere real —
  * "password" is a placeholder, not a real credential.
@@ -23,7 +23,7 @@ class Users_Seeder extends CI_Seeder
             'name' => 'Admin',
             'email' => 'admin@example.com',
             'password' => password_hash('password', PASSWORD_DEFAULT),
-            'role' => 'admin',
+            'role' => 'super_admin',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ));

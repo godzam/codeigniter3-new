@@ -17,6 +17,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 - [Working with HMVC modules](#working-with-hmvc-modules)
 - [Template & theming](#template--theming)
 - [Authentication](#authentication)
+- [Roles & permissions](#roles--permissions)
 - [Cloudflare Turnstile](#cloudflare-turnstile)
 - [Error handling](#error-handling)
 - [CLI console (migrations & seeders)](#cli-console-migrations--seeders)
@@ -35,6 +36,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 | **PHP 8.2–8.5 compatible** | CodeIgniter 3's "super object" pattern attaches things like `config`, `benchmark`, and the database driver to controllers/loader/router as properties at *runtime*, which PHP 8.2+ deprecates. This starter declares that pattern explicitly allowed (`#[\AllowDynamicProperties]`) across every core class that needs it, so nothing warns. |
 | **HMVC (Modular Extensions)** | Instead of one flat `application/controllers` + `application/models` + `application/views`, group each feature into its own self-contained module: `application/modules/blog/{controllers,models,views}`. Modules can even call each other. A working example ships in `application/modules/example/`. |
 | **Bootstrap 5 template & theming** | Public, auth, and admin layouts (Bootstrap 5.3, Bootstrap Icons, SweetAlert2 — all vendored, no CDN). An admin **Settings** page controls the primary/secondary colors, light/dark/auto mode, corner roundness, font, sidebar and navbar style, app name and logo — stored in the database, with a live preview. |
+| **Roles & permissions (RBAC)** | Create, edit and delete roles from the admin UI, and tick which permissions each one holds. Permissions are declared per module (`module.action`) and checked with `can()` / `require_permission()`. `super_admin` is the built-in top role: every permission, can't be edited, deleted or created again. |
 | **Cloudflare Turnstile** | Optional CAPTCHA on the login and register forms, switched on and configured from Settings → Security (site key, secret key, per-form switches, widget theme and size). Fails closed if Cloudflare can't be reached. |
 | **Authentication** | Email/password register, login, and logout (`application/modules/auth`), password hashing, session-backed `is_logged_in()`/`require_login()`/`require_role()` helpers, and per-IP login rate limiting. Not a full framework — a real, working starting point for your own auth. |
 | **Database migrations & seeders** | CI3's built-in `Migration` library, enabled and wired to a CLI runner, plus a small seeder pattern CI3 doesn't ship with (`application/seeds/`). |
@@ -116,13 +118,14 @@ application/
     app_settings.php         — the settings schema (fields on the Settings page)
     menu.php                 — admin sidebar items
   helpers/
-    auth_helper.php           — is_logged_in(), current_user(), require_login(), require_role()
+    auth_helper.php           — is_logged_in(), current_user(), can(), require_permission(), require_login(), require_role()
     theme_helper.php           — theme CSS variables, asset_url(), flash(), menu_items()
   views/layouts/                — public / auth / admin layouts
   libraries/
     Settings.php                — DB-backed settings with defaults
     Template.php                 — $this->template->render('view', $data, 'admin')
     Turnstile.php                 — Cloudflare Turnstile widget + server-side check
+    Rbac.php                       — current role, permission checks, role/user data access
     Ratelimiter.php            — fixed-window rate limiting (file cache, no Redis needed)
     Logger.php                  — opt-in Monolog logging
     Seeder.php                   — seeder runner (application/seeds/*_seeder.php)
@@ -135,6 +138,8 @@ application/
     auth/                            — register/login/logout
     dashboard/                        — landing page after login (admin layout)
     settings/                          — admin Settings page (/admin/settings)
+    users/                              — user list + role assignment (/admin/users)
+    roles/                               — role CRUD + permission matrix (/admin/roles)
   src/                                — Composer-autoloaded App\ namespace for plain PHP classes
   third_party/
     MX/                                — HMVC (Modular Extensions) library
@@ -286,6 +291,96 @@ has_role('admin');             // bool
 ```
 
 The `users` table comes from `application/migrations/20260813120000_create_users_table.php` — run `php index.php console migrate` to create it. This is intentionally minimal (no password reset, no email verification, no OAuth) — extend `application/modules/auth/controllers/Auth.php` for anything beyond that.
+
+## Roles & permissions
+
+Each user has **one role**; each role holds a set of **permissions**. Both are managed in the admin area (sidebar → **Roles** and **Users**), not in code.
+
+- **Roles are free-form.** Create, rename, describe and delete them on **/admin/roles**. A role's *key* (e.g. `content_editor`) is fixed when it is created, because users are linked to it; everything else can be edited any time.
+- **`super_admin` is the top role.** It is built in, always holds every permission (including ones added later), and **cannot be created again, edited or deleted**. Anyone below it is up to you. There must always be at least one super admin, and only a super admin can grant, take away, or change the `super_admin` role.
+- **One role is the default**, given to new sign-ups (set it with the switch on the role form). It can't be deleted, and a role that still has users can't be deleted either: move them first.
+- **Admins can't escalate.** Someone with `roles.edit` can only tick or untick permissions they hold themselves (the others show greyed out, and the server ignores them), and nobody but a super admin can change their own role.
+- **Changes apply immediately.** The role is read from the database on every request, so editing a role or reassigning a user takes effect on their next click, with no re-login.
+
+### Using permissions in code
+
+A permission is `module.action`. Declare the ones your module checks in `application/modules/<module>/config/permissions.php` (the starter's own are in `application/config/permissions.php`):
+
+```php
+$config['permissions']['blog'] = array(
+    'label' => 'Blog',
+    'icon' => 'bi-journal-text',
+    'permissions' => array(
+        'view'   => 'See posts in the admin',
+        'edit'   => 'Create and edit posts',
+        'delete' => 'Delete posts',
+    ),
+);
+```
+
+They appear on the Roles page automatically. Then check them:
+
+```php
+require_permission('blog.edit');      // top of a controller method: login page for guests, 403 for the rest
+
+<?php if (can('blog.delete')): ?> …   // in a view
+```
+
+and gate a sidebar item with `'permission' => 'blog.view'` in `application/config/menu.php`. Prefer permissions to role names in code: `has_role('editor')` still works (and passes for a super admin), but roles are created and renamed by admins while `blog.edit` always means the same thing.
+
+### Upgrading an existing install
+
+`php index.php console migrate` creates the `roles` and `role_permissions` tables with three starting roles — `super_admin`, `admin` (every permission) and `user` (none, the sign-up default) — and keeps every user working:
+
+- anyone who was an `admin` becomes a **`super_admin`**, so nobody loses access (the old `admin` was the only privileged role);
+- any other role name already on a user becomes a role of its own, with no permissions, ready for you to configure.
+
+The seeded `admin@example.com` is a `super_admin`.
+
+## Tables (DataTables, server-side)
+
+Every list in the app is a server-side DataTable: paging, search and sorting run in SQL, so a table with a million rows costs the same as one with ten. On phones the controls stack, the pager shortens, and columns that don't fit fold into an expandable row (tap the arrow). Use this for **all new tables**; it is wired up so a list is about 20 lines.
+
+In the view:
+
+```php
+<?php echo datatable_table('orders-table', 'admin/orders/data', [
+    ['Order',  ['priority' => 1]],                     // lower priority number = hidden last on small screens
+    ['Status', ['priority' => 3]],
+    ['Total',  ['priority' => 2, 'class' => 'text-end']],
+    ['',       ['priority' => 1, 'orderable' => false, 'class' => 'text-end']],   // actions
+]) ?>
+```
+
+In the controller (plus a route such as `$route['admin/orders/data'] = 'orders/orders/data';`, guarded like the page itself):
+
+```php
+public function data()
+{
+    require_permission('orders.view');
+
+    $this->datatable
+        ->from(function ($db) { $db->from('orders o'); })     // FROM / JOIN / WHERE
+        ->select('o.id, o.number, o.status, o.total')
+        ->column('order',  'o.number')                       // same order as the <th>s
+        ->column('status', 'o.status')
+        ->column('total',  'o.total', false)                 // sortable, not searched
+        ->column('actions', null)                            // computed, neither
+        ->default_order(['o.id DESC'])
+        ->respond(function ($row) {                          // one row => cells (HTML, escape user data!)
+            return [
+                'order'  => htmlspecialchars($row['number']),
+                'status' => htmlspecialchars($row['status']),
+                'total'  => number_format($row['total'], 2),
+                'actions' => '<a class="btn btn-sm btn-outline-secondary" href="'.site_url('admin/orders/'.(int) $row['id']).'">View</a>',
+            ];
+        });
+}
+```
+
+The request is whitelisted (`App\DataTables\Params`): columns are picked by index from the list you declared, the page size is capped at 100, and typed `%`/`_` match literally. The search box matches every word against any searchable column (`ann admin` finds Ann with the admin role). DataTables, jQuery and the Responsive extension are vendored under `assets/vendor/` and only loaded on pages that print a table.
+
+**Mobile first.** The layouts and `assets/css/app.css` are written for phones first and widened with `min-width` media queries: the admin sidebar is an off-canvas drawer below 992px (hamburger, backdrop, Esc to close), touch targets are at least 40px, form fields stay 16px so iOS doesn't zoom, and nothing may scroll the page sideways. Keep it that way: add new rules for the small screen first, then `@media (min-width: ...)` for larger ones.
 
 ## Cloudflare Turnstile
 

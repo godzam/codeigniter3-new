@@ -122,7 +122,7 @@ final class HttpSmokeTest extends TestCase
     {
         $client = new Client(['base_uri' => self::$baseUri, 'http_errors' => false, 'allow_redirects' => false]);
 
-        foreach (['/dashboard', '/admin/settings'] as $path) {
+        foreach (['/dashboard', '/admin/settings', '/admin/users', '/admin/roles', '/admin/users/data', '/admin/roles/data', '/admin/roles/create', '/admin/roles/edit/editor'] as $path) {
             $response = $client->get($path);
 
             $this->assertContains($response->getStatusCode(), [301, 302, 303, 307, 308], $path);
