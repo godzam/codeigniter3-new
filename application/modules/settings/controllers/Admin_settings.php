@@ -19,7 +19,7 @@ class Admin_settings extends MX_Controller
     public function __construct()
     {
         parent::__construct();
-        require_role('admin');
+        require_permission('settings.manage');
         $this->load->helper('form');
     }
 

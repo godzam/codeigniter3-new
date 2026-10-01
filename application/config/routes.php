@@ -65,3 +65,11 @@ $route['logout'] = 'auth/logout';
 // Settings library.
 $route['admin/settings'] = 'settings/admin_settings/index';
 $route['admin/settings/reset'] = 'settings/admin_settings/reset';
+
+// Access control (application/modules/users and application/modules/roles).
+$route['admin/users'] = 'users/users/index';
+$route['admin/users/role/(:num)'] = 'users/users/role/$1';
+$route['admin/roles'] = 'roles/roles/index';
+$route['admin/roles/create'] = 'roles/roles/create';
+$route['admin/roles/edit/(:any)'] = 'roles/roles/edit/$1';
+$route['admin/roles/delete/(:any)'] = 'roles/roles/delete/$1';

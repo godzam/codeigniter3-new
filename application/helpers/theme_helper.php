@@ -268,6 +268,9 @@ if (!function_exists('menu_items')) {
                 if (isset($item['role']) && !has_role($item['role'])) {
                     continue;
                 }
+                if (isset($item['permission']) && !can($item['permission'])) {
+                    continue;
+                }
 
                 if (!empty($item['children'])) {
                     $item['children'] = $visible($item['children']);
