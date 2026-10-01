@@ -353,6 +353,19 @@ switch (ENVIRONMENT)
 
 /*
  * --------------------------------------------------------------------
+ * LOAD THE CUSTOM ERROR HANDLERS
+ * --------------------------------------------------------------------
+ *
+ * Replaces CI3's default error/exception handlers with the CI4/Laravel-
+ * style ones in application/core/MY_Exceptions.php (debug page in
+ * development, error pages per status code, JSON for API requests).
+ * Must be loaded before CodeIgniter.php. Remove this line to go back to
+ * CI3's stock error handling.
+ */
+require_once APPPATH.'core/error_handlers.php';
+
+/*
+ * --------------------------------------------------------------------
  * LOAD THE BOOTSTRAP FILE
  * --------------------------------------------------------------------
  *
