@@ -116,4 +116,47 @@ final class SettingsSchemaTest extends TestCase
         $this->assertTrue($schema->has('app_name'));
         $this->assertSame('General', $schema->groups()['general']['label']);
     }
+
+    private function schemaWithDependency(): Schema
+    {
+        return new Schema(['security' => ['label' => 'Security', 'fields' => [
+            'captcha' => ['label' => 'Captcha', 'type' => 'switch', 'default' => false, 'requires' => ['site_key', 'secret']],
+            'site_key' => ['label' => 'Site key', 'type' => 'text', 'default' => ''],
+            'secret' => ['label' => 'Secret', 'type' => 'password', 'default' => ''],
+        ]]]);
+    }
+
+    public function testASwitchCanRequireOtherFieldsWhileItIsOn(): void
+    {
+        $result = $this->schemaWithDependency()->validate(['captcha' => '1', 'site_key' => '', 'secret' => '']);
+
+        $this->assertSame(['site_key', 'secret'], array_keys($result['errors']));
+        $this->assertStringContainsString('Captcha', $result['errors']['secret']);
+    }
+
+    public function testRequiredFieldsAreNotCheckedWhileTheSwitchIsOff(): void
+    {
+        $result = $this->schemaWithDependency()->validate(['site_key' => '', 'secret' => '']);
+
+        $this->assertSame([], $result['errors']);
+    }
+
+    public function testASavedSecretSatisfiesTheRequirementWhenLeftBlank(): void
+    {
+        $result = $this->schemaWithDependency()->validate(
+            ['captcha' => '1', 'site_key' => 'abc', 'secret' => ''],
+            [],
+            ['secret' => 'stored-secret']
+        );
+
+        $this->assertSame([], $result['errors']);
+        $this->assertSame(['secret'], $result['keep']);
+    }
+
+    public function testANewlyTypedSecretSatisfiesTheRequirement(): void
+    {
+        $result = $this->schemaWithDependency()->validate(['captcha' => '1', 'site_key' => 'abc', 'secret' => 'new']);
+
+        $this->assertSame([], $result['errors']);
+    }
 }

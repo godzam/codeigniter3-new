@@ -19,6 +19,7 @@ use App\Theme\Color;
  *       'options' => [...],              // select only: value => label
  *       'help'    => 'Shown under the field',
  *       'public'  => true,               // may be exposed to unauthenticated pages
+ *       'requires' => ['other_field'],   // switch only: these must be non-empty when it is on
  *   ]
  */
 final class Schema
@@ -111,11 +112,12 @@ final class Schema
      * empty password keeps the stored one (returned in $keep).
      *
      * @param array<string, mixed> $input
-     * @param array<string>        $only  restrict to these fields (e.g. one tab); empty = all
+     * @param array<string>        $only    restrict to these fields (e.g. one tab); empty = all
+     * @param array<string, mixed> $current already-saved values, so 'requires' counts a kept password
      *
      * @return array{values: array<string, mixed>, errors: array<string, string>, keep: array<string>}
      */
-    public function validate(array $input, array $only = [])
+    public function validate(array $input, array $only = [], array $current = [])
     {
         $values = $errors = $keep = [];
 
@@ -177,6 +179,26 @@ final class Schema
                     } else {
                         $values[$name] = $text;
                     }
+            }
+        }
+
+        // A switch can demand that other fields be filled in while it is on
+        // (e.g. Turnstile needs both keys). A password left blank keeps the
+        // saved one, which then counts as filled.
+        foreach ($this->fields() as $name => $field) {
+            if (empty($field['requires']) || ($values[$name] ?? '0') !== '1') {
+                continue;
+            }
+
+            foreach ($field['requires'] as $required) {
+                if (isset($errors[$required])) {
+                    continue;
+                }
+
+                $effective = $values[$required] ?? (string) ($current[$required] ?? '');
+                if (trim((string) $effective) === '') {
+                    $errors[$required] = ($this->fields()[$required]['label'] ?? $required).' is required while "'.$field['label'].'" is on.';
+                }
             }
         }
 

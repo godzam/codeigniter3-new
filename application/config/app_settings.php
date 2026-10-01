@@ -124,4 +124,52 @@ $config['app_settings'] = array(
 		),
 	),
 
+	'security' => array(
+		'label' => 'Security',
+		'icon' => 'bi-shield-check',
+		'fields' => array(
+			'turnstile_enabled' => array(
+				'label' => 'Protect forms with Cloudflare Turnstile',
+				'type' => 'switch',
+				'default' => FALSE,
+				'requires' => array('turnstile_site_key', 'turnstile_secret_key'),
+				'help' => 'A privacy-friendly CAPTCHA. Create a site at dash.cloudflare.com → Turnstile and paste its keys below.',
+			),
+			'turnstile_site_key' => array(
+				'label' => 'Turnstile site key',
+				'type' => 'text',
+				'default' => getenv('TURNSTILE_SITE_KEY') ?: '',
+				'help' => 'Public key shown in the page. For local testing Cloudflare offers dummy keys: 1x00000000000000000000AA always passes, 2x00000000000000000000AB always blocks.',
+			),
+			'turnstile_secret_key' => array(
+				'label' => 'Turnstile secret key',
+				'type' => 'password',
+				'default' => getenv('TURNSTILE_SECRET_KEY') ?: '',
+				'help' => 'Private key, used only on the server. Dummy secret for testing: 1x0000000000000000000000000000000AA (passes) or 2x0000000000000000000000000000000AA (fails). Leave blank to keep the current one. It can also come from the TURNSTILE_SECRET_KEY environment variable.',
+			),
+			'turnstile_on_login' => array(
+				'label' => 'Require it on the login form',
+				'type' => 'switch',
+				'default' => TRUE,
+			),
+			'turnstile_on_register' => array(
+				'label' => 'Require it on the registration form',
+				'type' => 'switch',
+				'default' => TRUE,
+			),
+			'turnstile_theme' => array(
+				'label' => 'Widget theme',
+				'type' => 'select',
+				'default' => 'auto',
+				'options' => array('auto' => 'Match the site (light/dark)', 'light' => 'Light', 'dark' => 'Dark'),
+			),
+			'turnstile_size' => array(
+				'label' => 'Widget size',
+				'type' => 'select',
+				'default' => 'normal',
+				'options' => array('normal' => 'Normal', 'flexible' => 'Flexible (fills the form width)', 'compact' => 'Compact'),
+			),
+		),
+	),
+
 );

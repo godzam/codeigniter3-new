@@ -167,7 +167,7 @@ class Settings
      */
     public function validate(array $input, array $only = [])
     {
-        return $this->schema->validate($input, $only);
+        return $this->schema->validate($input, $only, $this->all());
     }
 
     protected function load()

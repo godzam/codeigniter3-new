@@ -17,6 +17,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 - [Working with HMVC modules](#working-with-hmvc-modules)
 - [Template & theming](#template--theming)
 - [Authentication](#authentication)
+- [Cloudflare Turnstile](#cloudflare-turnstile)
 - [CLI console (migrations & seeders)](#cli-console-migrations--seeders)
 - [DevelBar](#develbar)
 - [Code quality tooling](#code-quality-tooling)
@@ -33,6 +34,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 | **PHP 8.2–8.5 compatible** | CodeIgniter 3's "super object" pattern attaches things like `config`, `benchmark`, and the database driver to controllers/loader/router as properties at *runtime*, which PHP 8.2+ deprecates. This starter declares that pattern explicitly allowed (`#[\AllowDynamicProperties]`) across every core class that needs it, so nothing warns. |
 | **HMVC (Modular Extensions)** | Instead of one flat `application/controllers` + `application/models` + `application/views`, group each feature into its own self-contained module: `application/modules/blog/{controllers,models,views}`. Modules can even call each other. A working example ships in `application/modules/example/`. |
 | **Bootstrap 5 template & theming** | Public, auth, and admin layouts (Bootstrap 5.3, Bootstrap Icons, SweetAlert2 — all vendored, no CDN). An admin **Settings** page controls the primary/secondary colors, light/dark/auto mode, corner roundness, font, sidebar and navbar style, app name and logo — stored in the database, with a live preview. |
+| **Cloudflare Turnstile** | Optional CAPTCHA on the login and register forms, switched on and configured from Settings → Security (site key, secret key, per-form switches, widget theme and size). Fails closed if Cloudflare can't be reached. |
 | **Authentication** | Email/password register, login, and logout (`application/modules/auth`), password hashing, session-backed `is_logged_in()`/`require_login()`/`require_role()` helpers, and per-IP login rate limiting. Not a full framework — a real, working starting point for your own auth. |
 | **Database migrations & seeders** | CI3's built-in `Migration` library, enabled and wired to a CLI runner, plus a small seeder pattern CI3 doesn't ship with (`application/seeds/`). |
 | **DevelBar** | A toolbar docked to the bottom of the page (development only) showing benchmarks, database queries, session data, loaded config, and a per-view memory breakdown. |
@@ -118,6 +120,7 @@ application/
   libraries/
     Settings.php                — DB-backed settings with defaults
     Template.php                 — $this->template->render('view', $data, 'admin')
+    Turnstile.php                 — Cloudflare Turnstile widget + server-side check
     Ratelimiter.php            — fixed-window rate limiting (file cache, no Redis needed)
     Logger.php                  — opt-in Monolog logging
     Seeder.php                   — seeder runner (application/seeds/*_seeder.php)
@@ -281,6 +284,36 @@ has_role('admin');             // bool
 ```
 
 The `users` table comes from `application/migrations/20260813120000_create_users_table.php` — run `php index.php console migrate` to create it. This is intentionally minimal (no password reset, no email verification, no OAuth) — extend `application/modules/auth/controllers/Auth.php` for anything beyond that.
+
+## Cloudflare Turnstile
+
+A privacy-friendly CAPTCHA for the login and register forms. It is **off by default**; nothing changes until you turn it on.
+
+1. In the Cloudflare dashboard, create a Turnstile site and copy its **site key** and **secret key**.
+2. Log in as an admin → **Settings → Security**, switch Turnstile on, paste both keys, and choose which forms use it (login, register), plus the widget theme and size. Saving with Turnstile on but a key missing is rejected.
+
+The keys can also come from the environment (`TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` in `.env`) as defaults; a value saved in Settings wins. The secret is never printed back into the page.
+
+**Locally**, Cloudflare publishes dummy keys that need no real site (see "Testing" in their Turnstile docs): site key `1x00000000000000000000AA` with secret `1x0000000000000000000000000000000AA` always passes; `2x00000000000000000000AB` / `2x0000000000000000000000000000000AA` always fails.
+
+**Protect another form** with two lines:
+
+```php
+// the form's view, above the submit button
+<?php echo turnstile_widget('contact') ?>
+
+// the controller, after the form's own validation
+if (!$this->turnstile->verify_for('contact')) {
+    $error = $this->turnstile->error_message();   // safe to show the visitor
+}
+```
+
+Add a `turnstile_on_contact` switch to `application/config/app_settings.php` (copy `turnstile_on_login`) so the form can be toggled in Settings.
+
+Notes:
+- If Cloudflare can't be reached (or the secret is wrong) the form is **rejected**, not skipped, so an outage can't be used to bypass the check; the cause is logged.
+- While Turnstile is on, the `Content-Security-Policy` header also allows `https://challenges.cloudflare.com` (script, frame, connect) — see `application/hooks/SecurityHeaders.php`.
+- `TURNSTILE_VERIFY_URL` overrides the verification endpoint (for tests with a fake server, or an outbound proxy).
 
 ## CLI console (migrations & seeders)
 
