@@ -18,6 +18,7 @@ class SecurityHeaders
 {
     public function apply()
     {
+        /** @var CI_Controller&object{csp_nonce: string} $CI csp_nonce is read back by csp_nonce_attr() in theme_helper.php */
         $CI = &get_instance();
 
         // Outside development, inline <script>/<style> are allowed only if
