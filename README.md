@@ -382,6 +382,36 @@ The request is whitelisted (`App\DataTables\Params`): columns are picked by inde
 
 **Mobile first.** The layouts and `assets/css/app.css` are written for phones first and widened with `min-width` media queries: the admin sidebar is an off-canvas drawer below 992px (hamburger, backdrop, Esc to close), touch targets are at least 40px, form fields stay 16px so iOS doesn't zoom, and nothing may scroll the page sideways. Keep it that way: add new rules for the small screen first, then `@media (min-width: ...)` for larger ones.
 
+## CRUD generator
+
+**Admin → Generator** (super admin only) turns a form into a working module: you name a table and its fields, and get
+
+- the table, created for you (`id`, your fields, `created_at`, `updated_at`),
+- a list at `admin/c/<key>` as a server-side DataTable (search, sort, paging, mobile layout),
+- add / edit in a modal (full screen on phones) and delete with a confirmation,
+- four permissions (`<key>.view`, `.create`, `.edit`, `.delete`) that show up on the Roles page, and a sidebar entry for whoever may view it.
+
+The `admin` role is granted the new permissions automatically; give other roles access on the Roles page.
+
+**Who can do what.** `super_admin` is for the developers: only they see the Generator (there is deliberately no permission that could hand it out), and other users never see `super_admin` accounts or the role. `admin` is the highest role for everyone else and uses the modules you generate.
+
+| Input | Stored as | Notes |
+|---|---|---|
+| Text, Text area | `VARCHAR(255)` / `TEXT` | max length, required, unique |
+| Number | `BIGINT` or `DECIMAL(15,2)` | whole numbers or 2 decimals, min / max |
+| Email, Date | `VARCHAR(190)` / `DATE` | validated |
+| Password | hash in `VARCHAR(255)` | min length; never shown; empty on edit keeps the old one |
+| Dropdown, Radio, Multi select | value (multi: JSON list) | choices typed in (`value\|label` per line) **or read from another table** (value + label column) |
+| Image upload | path in `VARCHAR(255)` | max size, allowed types, resized to a max width and re-encoded at a set quality (GD) |
+| File upload | path in `VARCHAR(255)` | max size, allowed extensions |
+
+Things to know:
+
+- **Fields are append-only.** On an existing module you can relabel fields, change options and settings, and add fields (a column is added). Names and types of existing fields are locked, and a field cannot be removed; to start over, delete the module (you must type its key; this **drops the table with all its records**, deletes its uploaded files and its permissions).
+- **Uploads** go to `uploads/crud/<key>/` under random names. The server checks size, extension (scripts, HTML and SVG are never accepted) and, for images, the real content; images are re-encoded, which also strips metadata. `uploads/.htaccess` stops anything there from executing on Apache. **On nginx add the equivalent** (e.g. `location ^~ /uploads/ { location ~ \.php$ { return 403; } }`). Mind PHP's `upload_max_filesize` / `post_max_size`, which cap what a form can send whatever limit you set here.
+- Choices read from another table load up to 500 rows into the dropdown.
+- Everything is validated on the server (`App\Crud\Definition`, `RecordValidator`, `Uploader`); the browser only helps.
+
 ## Cloudflare Turnstile
 
 A privacy-friendly CAPTCHA for the login and register forms. It is **off by default**; nothing changes until you turn it on.

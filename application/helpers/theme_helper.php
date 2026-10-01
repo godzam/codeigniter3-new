@@ -257,15 +257,21 @@ if (!function_exists('menu_items')) {
      */
     function menu_items()
     {
+        /** @var CI_Controller&object{crud_store: Crud_store} $CI */
         $CI = &get_instance();
         $CI->config->load('menu', true, true);
         $items = $CI->config->item('menu', 'menu') ?: [];
+        // Modules made with the CRUD generator (each already checked against the user's permissions).
+        $items = array_merge($items, $CI->crud_store->menu_entries());
         $current = trim($CI->uri->uri_string(), '/');
 
         $visible = static function (array $items) use (&$visible, $current) {
             $out = [];
             foreach ($items as $item) {
                 if (isset($item['role']) && !has_role($item['role'])) {
+                    continue;
+                }
+                if (!empty($item['super_admin']) && !is_super_admin()) {
                     continue;
                 }
                 if (isset($item['permission']) && !can($item['permission'])) {

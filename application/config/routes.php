@@ -75,3 +75,16 @@ $route['admin/roles/data'] = 'roles/roles/data';
 $route['admin/roles/create'] = 'roles/roles/create';
 $route['admin/roles/edit/(:any)'] = 'roles/roles/edit/$1';
 $route['admin/roles/delete/(:any)'] = 'roles/roles/delete/$1';
+
+// ---- CRUD generator (super_admin) and the modules it makes ----------------
+$route['admin/generator'] = 'generator/module_generator/index';
+$route['admin/generator/data'] = 'generator/module_generator/data';
+$route['admin/generator/create'] = 'generator/module_generator/create';
+$route['admin/generator/edit/(:any)'] = 'generator/module_generator/edit/$1';
+$route['admin/generator/delete/(:any)'] = 'generator/module_generator/delete/$1';
+$route['admin/c/([a-z][a-z0-9_]*)'] = 'crud/crud/index/$1';
+$route['admin/c/([a-z][a-z0-9_]*)/data'] = 'crud/crud/data/$1';
+$route['admin/c/([a-z][a-z0-9_]*)/form'] = 'crud/crud/form/$1';
+$route['admin/c/([a-z][a-z0-9_]*)/form/(\d+)'] = 'crud/crud/form/$1/$2';
+$route['admin/c/([a-z][a-z0-9_]*)/save'] = 'crud/crud/save/$1';
+$route['admin/c/([a-z][a-z0-9_]*)/delete/(\d+)'] = 'crud/crud/delete/$1/$2';

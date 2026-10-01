@@ -60,6 +60,24 @@ class Rbac
                 [APPPATH.'config/'.ENVIRONMENT.'/permissions.php']
             );
             $this->registry = PermissionRegistry::fromFiles($files);
+
+            // Modules made with the CRUD generator declare theirs in the database.
+            $modules = $this->quietly(function ($db) {
+                return $db->select('slug, title, icon')->order_by('id', 'ASC')->get('crud_modules');
+            });
+            foreach ($modules === false ? [] : $modules->result_array() as $module) {
+                $title = $module['title'];
+                $this->registry->addGroup($module['slug'], [
+                    'label' => $title,
+                    'icon' => $module['icon'],
+                    'permissions' => [
+                        'view' => 'See the '.$title.' list',
+                        'create' => 'Add '.$title.' records',
+                        'edit' => 'Edit '.$title.' records',
+                        'delete' => 'Delete '.$title.' records',
+                    ],
+                ]);
+            }
         }
 
         return $this->registry;
