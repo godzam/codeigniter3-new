@@ -200,10 +200,16 @@ class Settings
     }
 
     /**
-     * The shared connection if the app already opened one, otherwise our
-     * own — and only if a database is configured and reachable. CI's
-     * normal loader calls show_error() (and exits) on a missing config or
-     * failed connection, which would take every page down with it.
+     * The app's shared connection ($CI->db), opened here if nothing has
+     * opened it yet — and only if a database is configured and reachable.
+     * CI's normal loader calls show_error() (and exits) on a missing config
+     * or failed connection, which would take every page down with it, so
+     * the first attempt runs with db_debug off.
+     *
+     * It has to be the shared connection, not a private one: opening a
+     * private one defines the CI_DB class, which makes CI's dbforge /
+     * dbutil loaders believe $CI->db exists and crash (`php index.php
+     * console migrate` died that way).
      */
     protected function database()
     {
@@ -233,17 +239,26 @@ class Settings
         }
 
         $params = $db[$active_group];
+        $debug = $params['db_debug'] ?? true;
         $params['db_debug'] = false;
 
         try {
-            $connection = $this->CI->load->database($params, true);
+            $this->CI->load->database($params);
         } catch (\Throwable $e) {
+            unset($this->CI->db);
+
             return null;
         }
 
+        $connection = $this->CI->db ?? null;
+
         if (is_object($connection) && !empty($connection->conn_id)) {
+            $connection->db_debug = $debug; // the app's own setting applies from here on
+
             return $this->db = $connection;
         }
+
+        unset($this->CI->db); // let the app's own load->database() try (and report) again
 
         return null;
     }
