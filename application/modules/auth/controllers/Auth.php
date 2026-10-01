@@ -16,6 +16,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * @property CI_Form_validation $form_validation
  * @property Ratelimiter $ratelimiter
  * @property CI_Session $session
+ * @property Template $template
  */
 class Auth extends MX_Controller
 {
@@ -30,7 +31,7 @@ class Auth extends MX_Controller
     public function login()
     {
         if (is_logged_in()) {
-            redirect('/');
+            redirect('dashboard');
         }
 
         if ($this->input->method() === 'post') {
@@ -39,7 +40,7 @@ class Auth extends MX_Controller
             return;
         }
 
-        $this->load->view('login');
+        $this->show('login', 'Log in');
     }
 
     protected function handle_login()
@@ -48,7 +49,7 @@ class Auth extends MX_Controller
         $this->form_validation->set_rules('password', 'Password', 'required');
 
         if (!$this->form_validation->run()) {
-            $this->load->view('login');
+            $this->show('login', 'Log in');
 
             return;
         }
@@ -57,7 +58,7 @@ class Auth extends MX_Controller
 
         if (!$this->ratelimiter->attempt($rate_key, 5, 60)) {
             $retry_after = $this->ratelimiter->retry_after($rate_key);
-            $this->load->view('login', ['error' => "Too many attempts. Try again in {$retry_after}s."]);
+            $this->show('login', 'Log in', ['error' => "Too many attempts. Try again in {$retry_after}s."]);
 
             return;
         }
@@ -65,7 +66,7 @@ class Auth extends MX_Controller
         $user = $this->user_model->find_by_email($this->input->post('email'));
 
         if (!$user || !password_verify((string) $this->input->post('password'), $user->password)) {
-            $this->load->view('login', ['error' => 'Invalid email or password.']);
+            $this->show('login', 'Log in', ['error' => 'Invalid email or password.']);
 
             return;
         }
@@ -74,13 +75,13 @@ class Auth extends MX_Controller
         $this->log_in_as($user);
 
         $redirect = $this->session->flashdata('redirect_after_login');
-        redirect($redirect ?: '/');
+        redirect($redirect ?: 'dashboard');
     }
 
     public function register()
     {
         if (is_logged_in()) {
-            redirect('/');
+            redirect('dashboard');
         }
 
         if ($this->input->method() === 'post') {
@@ -89,7 +90,7 @@ class Auth extends MX_Controller
             return;
         }
 
-        $this->load->view('register');
+        $this->show('register', 'Register');
     }
 
     protected function handle_register()
@@ -99,7 +100,7 @@ class Auth extends MX_Controller
         $this->form_validation->set_rules('password', 'Password', 'required|min_length[8]');
 
         if (!$this->form_validation->run()) {
-            $this->load->view('register');
+            $this->show('register', 'Register');
 
             return;
         }
@@ -112,13 +113,23 @@ class Auth extends MX_Controller
         ]);
 
         $this->log_in_as($this->user_model->find($user_id));
-        redirect('/');
+        redirect('dashboard');
     }
 
     public function logout()
     {
         $this->session->sess_destroy();
         redirect('login');
+    }
+
+    /**
+     * Renders a form view inside the centered 'auth' layout.
+     *
+     * @param array<string, mixed> $data
+     */
+    protected function show($view, $title, array $data = [])
+    {
+        $this->template->set_title($title)->render($view, $data, 'auth');
     }
 
     protected function log_in_as($user)

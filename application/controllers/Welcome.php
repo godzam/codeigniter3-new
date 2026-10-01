@@ -2,6 +2,9 @@
 
 defined('BASEPATH') or exit('No direct script access allowed');
 
+/**
+ * @property Template $template
+ */
 class Welcome extends CI_Controller
 {
     /**
@@ -21,6 +24,6 @@ class Welcome extends CI_Controller
      */
     public function index()
     {
-        $this->load->view('welcome_message');
+        $this->template->render('welcome_message', [], 'public');
     }
 }

@@ -62,7 +62,7 @@ $autoload['packages'] = array(APPPATH.'third_party/DevelBar');
 // application/helpers/auth_helper.php) work from any controller, not
 // just application/modules/auth. Uses the 'files' session driver by
 // default (config.php) — no database required.
-$autoload['libraries'] = array('session');
+$autoload['libraries'] = array('session', 'settings', 'template');
 
 /*
 | -------------------------------------------------------------------
@@ -93,7 +93,7 @@ $autoload['drivers'] = array();
 |
 |	$autoload['helper'] = array('url', 'file');
 */
-$autoload['helper'] = array('url', 'auth');
+$autoload['helper'] = array('url', 'auth', 'theme');
 
 /*
 | -------------------------------------------------------------------

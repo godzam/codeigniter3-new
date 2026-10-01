@@ -38,6 +38,29 @@
 
 /*
  *---------------------------------------------------------------
+ * PHP BUILT-IN SERVER: SERVE STATIC ASSETS
+ *---------------------------------------------------------------
+ *
+ * When started with this file as the router (`php -S host:port
+ * index.php`, as CI and the feature tests do), every request would
+ * reach CodeIgniter — including the CSS/JS/fonts under assets/, which
+ * would come back as an HTML page. Returning FALSE makes the built-in
+ * server send the file itself. Limited to assets/ so nothing else in the
+ * project (like .env) is ever served this way; irrelevant under
+ * Apache/Nginx, which serve assets directly.
+ */
+	if (PHP_SAPI === 'cli-server')
+	{
+		$_ci_path = rawurldecode((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH));
+		if (strpos($_ci_path, '/assets/') === 0 && strpos($_ci_path, '..') === FALSE && is_file(__DIR__.$_ci_path))
+		{
+			return FALSE;
+		}
+		unset($_ci_path);
+	}
+
+/*
+ *---------------------------------------------------------------
  * LOAD ENVIRONMENT VARIABLES FROM .env (OPTIONAL)
  *---------------------------------------------------------------
  *

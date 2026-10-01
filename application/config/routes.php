@@ -59,3 +59,9 @@ $route['translate_uri_dashes'] = FALSE;
 $route['login'] = 'auth/login';
 $route['register'] = 'auth/register';
 $route['logout'] = 'auth/logout';
+
+// Admin settings (application/modules/settings). The controller is called
+// Admin_settings because a class named Settings would clash with the
+// Settings library.
+$route['admin/settings'] = 'settings/admin_settings/index';
+$route['admin/settings/reset'] = 'settings/admin_settings/reset';

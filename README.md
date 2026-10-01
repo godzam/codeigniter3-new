@@ -15,6 +15,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 - [Quick start](#quick-start)
 - [Project structure](#project-structure)
 - [Working with HMVC modules](#working-with-hmvc-modules)
+- [Template & theming](#template--theming)
 - [Authentication](#authentication)
 - [CLI console (migrations & seeders)](#cli-console-migrations--seeders)
 - [DevelBar](#develbar)
@@ -31,6 +32,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 |---|---|
 | **PHP 8.2–8.5 compatible** | CodeIgniter 3's "super object" pattern attaches things like `config`, `benchmark`, and the database driver to controllers/loader/router as properties at *runtime*, which PHP 8.2+ deprecates. This starter declares that pattern explicitly allowed (`#[\AllowDynamicProperties]`) across every core class that needs it, so nothing warns. |
 | **HMVC (Modular Extensions)** | Instead of one flat `application/controllers` + `application/models` + `application/views`, group each feature into its own self-contained module: `application/modules/blog/{controllers,models,views}`. Modules can even call each other. A working example ships in `application/modules/example/`. |
+| **Bootstrap 5 template & theming** | Public, auth, and admin layouts (Bootstrap 5.3, Bootstrap Icons, SweetAlert2 — all vendored, no CDN). An admin **Settings** page controls the primary/secondary colors, light/dark/auto mode, corner roundness, font, sidebar and navbar style, app name and logo — stored in the database, with a live preview. |
 | **Authentication** | Email/password register, login, and logout (`application/modules/auth`), password hashing, session-backed `is_logged_in()`/`require_login()`/`require_role()` helpers, and per-IP login rate limiting. Not a full framework — a real, working starting point for your own auth. |
 | **Database migrations & seeders** | CI3's built-in `Migration` library, enabled and wired to a CLI runner, plus a small seeder pattern CI3 doesn't ship with (`application/seeds/`). |
 | **DevelBar** | A toolbar docked to the bottom of the page (development only) showing benchmarks, database queries, session data, loaded config, and a per-view memory breakdown. |
@@ -106,9 +108,16 @@ application/
   controllers/
     Console.php              — CLI-only: migrate, seed
     Health.php                — GET /health
+  config/
+    app_settings.php         — the settings schema (fields on the Settings page)
+    menu.php                 — admin sidebar items
   helpers/
     auth_helper.php           — is_logged_in(), current_user(), require_login(), require_role()
+    theme_helper.php           — theme CSS variables, asset_url(), flash(), menu_items()
+  views/layouts/                — public / auth / admin layouts
   libraries/
+    Settings.php                — DB-backed settings with defaults
+    Template.php                 — $this->template->render('view', $data, 'admin')
     Ratelimiter.php            — fixed-window rate limiting (file cache, no Redis needed)
     Logger.php                  — opt-in Monolog logging
     Seeder.php                   — seeder runner (application/seeds/*_seeder.php)
@@ -119,6 +128,8 @@ application/
   modules/
     example/                       — working reference HMVC module, safe to delete
     auth/                            — register/login/logout
+    dashboard/                        — landing page after login (admin layout)
+    settings/                          — admin Settings page (/admin/settings)
   src/                                — Composer-autoloaded App\ namespace for plain PHP classes
   third_party/
     MX/                                — HMVC (Modular Extensions) library
@@ -126,6 +137,7 @@ application/
 system/
   core/*.php, database/DB_driver.php, libraries/Driver.php
                                          — patched with #[AllowDynamicProperties] for PHP 8.2+
+assets/                                  — css/, js/, and vendor/ (Bootstrap, Bootstrap Icons, SweetAlert2)
 tests-app/                               — PHPUnit for application code (not CI3's own tests/)
 phpstan.neon.dist, .php-cs-fixer.dist.php — static analysis / style config
 Dockerfile, docker-compose.yml            — containerized dev environment
@@ -173,6 +185,70 @@ A few things worth knowing:
 - Delete `application/modules/example/` once you don't need the reference anymore — it's a teaching example, not something meant to ship in a real app.
 
 See [`application/third_party/MX/Controller.php`](application/third_party/MX/Controller.php) for the full API (autoloading per-module, view partials, etc.), or the [upstream fork's docs](https://github.com/5112n4/wiredesignz-codeigniter-modular-extensions) for the original write-up.
+
+## Template & theming
+
+Pages are written as plain content views and wrapped in a layout:
+
+```php
+// in any controller (inside a module, 'index' resolves to that module's view first)
+$this->template
+    ->set_title('Users')
+    ->set_breadcrumbs(['Home' => '', 'Users' => null])
+    ->render('index', ['users' => $users], 'admin');   // 'public' | 'auth' | 'admin'
+```
+
+| Layout | For | Look |
+|---|---|---|
+| `public` | the website | top navbar, container, footer |
+| `auth` | login, register, forgot password | centered card |
+| `admin` | everything behind login | sidebar, top bar with breadcrumbs, user menu |
+
+They live in `application/views/layouts/`; edit them freely. Add a sidebar item in `application/config/menu.php`:
+
+```php
+array('label' => 'Users', 'icon' => 'bi-people', 'url' => 'users', 'role' => 'admin'),
+```
+
+### The Settings page
+
+Log in as an admin and open **/admin/settings** (run `php index.php console migrate` first so the `settings` table exists). Out of the box:
+
+- **General** — application name, tagline, logo, footer text
+- **Appearance** — primary and secondary color, default color mode (light / dark / auto), whether visitors get a light/dark switch, corner roundness, font
+- **Layout** — full-width content, compact sidebar, navbar filled with the primary color
+
+Hover/active shades, subtle backgrounds, readable text color, and the dark-mode variants are derived from the two colors you pick, so any color works. The panel on the right previews your changes before you save. Every setting has a default, so the site renders normally before a database exists.
+
+**Add your own settings** — declare the field in `application/config/app_settings.php` and it appears in the form, validated, with no other code:
+
+```php
+$config['app_settings']['general']['fields']['support_email'] = array(
+    'label' => 'Support email', 'type' => 'text', 'default' => '',
+);
+```
+
+Types: `text`, `textarea`, `color`, `select`, `switch`, `number`, `password` (stored as plain text — for third-party keys, not user passwords). Read a value anywhere with `$this->settings->get('support_email')` or `app_setting('support_email')` in a view. A module can register its own group with `$this->settings->register('blog', [...])`.
+
+### SweetAlert2
+
+Loaded on every layout and themed to match the current color mode:
+
+```php
+flash('success', 'Saved!');            // in a controller, shown as a toast after the redirect
+```
+```js
+App.toast('success', 'Done');          // from JavaScript
+App.confirm({title: 'Delete it?'}).then(r => r.isConfirmed && ...);
+```
+```html
+<a href="/users/5/delete" data-confirm="Delete this user?">Delete</a>     <!-- asks first -->
+<form method="post" data-confirm="Send the invoice?">...</form>
+```
+
+### Assets
+
+Bootstrap, Bootstrap Icons, and SweetAlert2 are vendored in `assets/vendor/` (no CDN, works offline) — to upgrade one, replace its folder with the new release's files. Your own CSS/JS go in `assets/css/app.css` and `assets/js/app.js`. `asset_url('css/app.css')` adds a cache-busting `?v=` so edits show up immediately.
 
 ## Authentication
 

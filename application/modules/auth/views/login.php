@@ -1,34 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="utf-8">
-	<title>Log in</title>
-	<style>
-		body { font: 16px/1.5 -apple-system, Segoe UI, Helvetica, Arial, sans-serif; max-width: 400px; margin: 60px auto; color: #333; }
-		label { display: block; margin-top: 12px; font-weight: 600; }
-		input { width: 100%; padding: 8px; box-sizing: border-box; margin-top: 4px; }
-		button { margin-top: 20px; padding: 8px 16px; }
-		.error { color: #b00020; }
-	</style>
-</head>
-<body>
-	<h1>Log in</h1>
+<?php defined('BASEPATH') OR exit('No direct script access allowed') ?>
+<h1 class="h4 mb-4 text-center">Log in</h1>
 
-	<?php if (!empty($error)): ?>
-		<p class="error"><?php echo htmlspecialchars($error) ?></p>
-	<?php endif ?>
-	<?php echo validation_errors('<p class="error">', '</p>') ?>
+<?php echo form_open('login') ?>
+	<div class="mb-3">
+		<label for="email" class="form-label">Email</label>
+		<div class="input-group">
+			<span class="input-group-text"><i class="bi bi-envelope"></i></span>
+			<input type="email" class="form-control" name="email" id="email" value="<?php echo set_value('email') ?>" autocomplete="username" required autofocus>
+		</div>
+	</div>
 
-	<?php echo form_open('login') ?>
-		<label for="email">Email</label>
-		<input type="email" name="email" id="email" value="<?php echo set_value('email') ?>" required>
+	<div class="mb-4">
+		<label for="password" class="form-label">Password</label>
+		<div class="input-group">
+			<span class="input-group-text"><i class="bi bi-lock"></i></span>
+			<input type="password" class="form-control" name="password" id="password" autocomplete="current-password" required>
+		</div>
+	</div>
 
-		<label for="password">Password</label>
-		<input type="password" name="password" id="password" required>
+	<button type="submit" class="btn btn-primary w-100">Log in</button>
+<?php echo form_close() ?>
 
-		<button type="submit">Log in</button>
-	<?php echo form_close() ?>
-
-	<p>No account? <a href="<?php echo site_url('register') ?>">Register</a></p>
-</body>
-</html>
+<p class="text-center small mt-4 mb-0">No account? <a href="<?php echo site_url('register') ?>">Register</a></p>

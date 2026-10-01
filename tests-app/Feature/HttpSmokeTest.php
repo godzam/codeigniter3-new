@@ -83,4 +83,50 @@ final class HttpSmokeTest extends TestCase
         $this->assertStringNotContainsString('PHP Error was encountered', $body);
         $this->assertStringContainsString('rendered by Modules::run', $body);
     }
+
+    public function testHomepageUsesTheBootstrapLayoutWithThemeVariables(): void
+    {
+        $client = new Client(['base_uri' => self::$baseUri, 'http_errors' => false]);
+
+        $body = (string) $client->get('/')->getBody();
+
+        $this->assertStringContainsString('assets/vendor/bootstrap/css/bootstrap.min.css', $body);
+        $this->assertStringContainsString('id="app-theme-vars"', $body);
+        $this->assertStringContainsString('--bs-primary:', $body);
+        $this->assertStringContainsString('data-bs-theme', $body);
+    }
+
+    public function testStaticAssetsAreServedWithTheRightContentType(): void
+    {
+        $client = new Client(['base_uri' => self::$baseUri, 'http_errors' => false]);
+
+        $css = $client->get('/assets/css/app.css');
+        $this->assertSame(200, $css->getStatusCode());
+        $this->assertStringStartsWith('text/css', $css->getHeaderLine('Content-Type'));
+
+        $js = $client->get('/assets/vendor/bootstrap/js/bootstrap.bundle.min.js');
+        $this->assertSame(200, $js->getStatusCode());
+        $this->assertStringContainsString('javascript', $js->getHeaderLine('Content-Type'));
+    }
+
+    public function testProjectFilesOutsideAssetsAreNotServedAsStaticFiles(): void
+    {
+        $client = new Client(['base_uri' => self::$baseUri, 'http_errors' => false]);
+
+        $body = (string) $client->get('/composer.json')->getBody();
+
+        $this->assertStringNotContainsString('"require"', $body);
+    }
+
+    public function testAdminPagesRedirectGuestsToTheLogin(): void
+    {
+        $client = new Client(['base_uri' => self::$baseUri, 'http_errors' => false, 'allow_redirects' => false]);
+
+        foreach (['/dashboard', '/admin/settings'] as $path) {
+            $response = $client->get($path);
+
+            $this->assertContains($response->getStatusCode(), [301, 302, 303, 307, 308], $path);
+            $this->assertStringContainsString('/login', $response->getHeaderLine('Location'), $path);
+        }
+    }
 }
