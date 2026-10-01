@@ -337,6 +337,51 @@ and gate a sidebar item with `'permission' => 'blog.view'` in `application/confi
 
 The seeded `admin@example.com` is a `super_admin`.
 
+## Tables (DataTables, server-side)
+
+Every list in the app is a server-side DataTable: paging, search and sorting run in SQL, so a table with a million rows costs the same as one with ten. On phones the controls stack, the pager shortens, and columns that don't fit fold into an expandable row (tap the arrow). Use this for **all new tables**; it is wired up so a list is about 20 lines.
+
+In the view:
+
+```php
+<?php echo datatable_table('orders-table', 'admin/orders/data', [
+    ['Order',  ['priority' => 1]],                     // lower priority number = hidden last on small screens
+    ['Status', ['priority' => 3]],
+    ['Total',  ['priority' => 2, 'class' => 'text-end']],
+    ['',       ['priority' => 1, 'orderable' => false, 'class' => 'text-end']],   // actions
+]) ?>
+```
+
+In the controller (plus a route such as `$route['admin/orders/data'] = 'orders/orders/data';`, guarded like the page itself):
+
+```php
+public function data()
+{
+    require_permission('orders.view');
+
+    $this->datatable
+        ->from(function ($db) { $db->from('orders o'); })     // FROM / JOIN / WHERE
+        ->select('o.id, o.number, o.status, o.total')
+        ->column('order',  'o.number')                       // same order as the <th>s
+        ->column('status', 'o.status')
+        ->column('total',  'o.total', false)                 // sortable, not searched
+        ->column('actions', null)                            // computed, neither
+        ->default_order(['o.id DESC'])
+        ->respond(function ($row) {                          // one row => cells (HTML, escape user data!)
+            return [
+                'order'  => htmlspecialchars($row['number']),
+                'status' => htmlspecialchars($row['status']),
+                'total'  => number_format($row['total'], 2),
+                'actions' => '<a class="btn btn-sm btn-outline-secondary" href="'.site_url('admin/orders/'.(int) $row['id']).'">View</a>',
+            ];
+        });
+}
+```
+
+The request is whitelisted (`App\DataTables\Params`): columns are picked by index from the list you declared, the page size is capped at 100, and typed `%`/`_` match literally. The search box matches every word against any searchable column (`ann admin` finds Ann with the admin role). DataTables, jQuery and the Responsive extension are vendored under `assets/vendor/` and only loaded on pages that print a table.
+
+**Mobile first.** The layouts and `assets/css/app.css` are written for phones first and widened with `min-width` media queries: the admin sidebar is an off-canvas drawer below 992px (hamburger, backdrop, Esc to close), touch targets are at least 40px, form fields stay 16px so iOS doesn't zoom, and nothing may scroll the page sideways. Keep it that way: add new rules for the small screen first, then `@media (min-width: ...)` for larger ones.
+
 ## Cloudflare Turnstile
 
 A privacy-friendly CAPTCHA for the login and register forms. It is **off by default**; nothing changes until you turn it on.

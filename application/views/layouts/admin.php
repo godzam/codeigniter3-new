@@ -35,6 +35,8 @@ $render_items = static function (array $items) use (&$render_items) {
 <body data-sidebar="<?php echo htmlspecialchars((string) app_setting('layout_sidebar'), ENT_QUOTES, 'UTF-8') ?>">
 <div class="admin-shell d-flex">
 
+	<div class="sidebar-backdrop" data-sidebar-toggle aria-hidden="true"></div>
+
 	<aside class="admin-sidebar d-flex flex-column p-2" id="admin-sidebar">
 		<a class="d-flex align-items-center text-decoration-none text-body px-2 py-3 fs-5" href="<?php echo site_url('dashboard') ?>"><?php echo app_brand() ?></a>
 		<ul class="nav flex-column gap-1">
@@ -43,9 +45,9 @@ $render_items = static function (array $items) use (&$render_items) {
 	</aside>
 
 	<div class="flex-grow-1 d-flex flex-column min-vw-0" style="min-width:0">
-		<header class="navbar border-bottom px-3 <?php echo $filled ? 'navbar-filled' : 'bg-body-tertiary' ?>">
-			<div class="d-flex align-items-center gap-2">
-				<button class="btn btn-link nav-link d-lg-none px-1" type="button" data-sidebar-toggle aria-label="Toggle menu"><i class="bi bi-list fs-3"></i></button>
+		<header class="navbar admin-topbar border-bottom px-2 px-sm-3 <?php echo $filled ? 'navbar-filled' : 'bg-body-tertiary' ?>">
+			<div class="d-flex align-items-center gap-2 overflow-hidden" style="min-width:0">
+				<button class="btn btn-link nav-link d-lg-none px-1" type="button" data-sidebar-toggle aria-label="Toggle menu" aria-controls="admin-sidebar"><i class="bi bi-list fs-3"></i></button>
 				<?php if ($breadcrumbs): ?>
 					<nav aria-label="breadcrumb">
 						<ol class="breadcrumb mb-0">
@@ -60,13 +62,13 @@ $render_items = static function (array $items) use (&$render_items) {
 					</nav>
 				<?php endif ?>
 			</div>
-			<div class="d-flex align-items-center gap-2">
+			<div class="d-flex align-items-center gap-2 flex-shrink-0">
 				<?php echo theme_toggle() ?>
 				<?php $this->view('layouts/partials/user_menu') ?>
 			</div>
 		</header>
 
-		<main class="flex-grow-1 p-3 p-lg-4">
+		<main class="flex-grow-1 admin-main">
 			<div class="<?php echo $fluid ? '' : 'container-xxl px-0' ?>">
 				<?php if ($page_title !== ''): ?><h1 class="h3 mb-4"><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8') ?></h1><?php endif ?>
 				<?php $this->view('layouts/partials/flash_inline') ?>

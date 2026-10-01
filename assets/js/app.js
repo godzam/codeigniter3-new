@@ -100,11 +100,23 @@
 	});
 	syncToggle();
 
-	// ---- Admin sidebar (mobile) --------------------------------------
-	document.addEventListener('click', function (e) {
-		var t = e.target.closest('[data-sidebar-toggle]');
+	// ---- Admin sidebar (phones and tablets: off-canvas drawer) ---------
+	function setSidebar(open) {
 		var sidebar = document.getElementById('admin-sidebar');
-		if (t && sidebar) { sidebar.classList.toggle('show'); }
-		else if (sidebar && sidebar.classList.contains('show') && !e.target.closest('#admin-sidebar')) { sidebar.classList.remove('show'); }
+		if (!sidebar) { return; }
+		sidebar.classList.toggle('show', open);
+		document.body.classList.toggle('sidebar-open', open);
+		var backdrop = document.querySelector('.sidebar-backdrop');
+		if (backdrop) { backdrop.classList.toggle('show', open); }
+		document.querySelectorAll('button[data-sidebar-toggle]').forEach(function (b) { b.setAttribute('aria-expanded', open ? 'true' : 'false'); });
+	}
+	document.addEventListener('click', function (e) {
+		var sidebar = document.getElementById('admin-sidebar');
+		if (!sidebar) { return; }
+		if (e.target.closest('[data-sidebar-toggle]')) { setSidebar(!sidebar.classList.contains('show')); }
+		else if (sidebar.classList.contains('show') && (e.target.closest('#admin-sidebar a[href]:not([data-bs-toggle])') || !e.target.closest('#admin-sidebar'))) { setSidebar(false); }
 	});
+	document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { setSidebar(false); } });
+	// Resizing up to desktop closes the drawer so it can't stay "open" off screen.
+	window.matchMedia('(min-width: 992px)').addEventListener('change', function (e) { if (e.matches) { setSidebar(false); } });
 })();
