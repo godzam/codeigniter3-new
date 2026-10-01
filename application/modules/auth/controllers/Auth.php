@@ -17,6 +17,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * @property Ratelimiter $ratelimiter
  * @property CI_Session $session
  * @property Template $template
+ * @property Turnstile $turnstile
  */
 class Auth extends MX_Controller
 {
@@ -50,6 +51,12 @@ class Auth extends MX_Controller
 
         if (!$this->form_validation->run()) {
             $this->show('login', 'Log in');
+
+            return;
+        }
+
+        if (!$this->turnstile->verify_for('login')) {
+            $this->show('login', 'Log in', ['error' => $this->turnstile->error_message()]);
 
             return;
         }
@@ -101,6 +108,12 @@ class Auth extends MX_Controller
 
         if (!$this->form_validation->run()) {
             $this->show('register', 'Register');
+
+            return;
+        }
+
+        if (!$this->turnstile->verify_for('register')) {
+            $this->show('register', 'Register', ['error' => $this->turnstile->error_message()]);
 
             return;
         }

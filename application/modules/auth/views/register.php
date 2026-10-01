@@ -27,6 +27,7 @@
 		<div class="form-text">At least 8 characters.</div>
 	</div>
 
+	<?php echo turnstile_widget('register') ?>
 	<button type="submit" class="btn btn-primary w-100">Register</button>
 <?php echo form_close() ?>
 

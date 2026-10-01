@@ -18,6 +18,7 @@
 		</div>
 	</div>
 
+	<?php echo turnstile_widget('login') ?>
 	<button type="submit" class="btn btn-primary w-100">Log in</button>
 <?php echo form_close() ?>
 
