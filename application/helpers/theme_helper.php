@@ -4,6 +4,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 require_once APPPATH.'src/autoload.php';
 
+use App\Security\Csp;
 use App\Theme\Color;
 
 /**
@@ -49,8 +50,7 @@ if (!function_exists('csp_nonce_attr')) {
      */
     function csp_nonce_attr()
     {
-        $CI = &get_instance();
-        $nonce = $CI->csp_nonce ?? '';
+        $nonce = Csp::nonce();
 
         return $nonce === '' ? '' : ' nonce="'.htmlspecialchars($nonce, ENT_QUOTES, 'UTF-8').'"';
     }

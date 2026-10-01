@@ -14,25 +14,25 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * that's too loose defeats the point. Test with DevTools' console open
  * after any change — CSP violations show up there, not as PHP errors.
  */
+require_once APPPATH.'src/autoload.php';
+
+use App\Security\Csp;
+
 class SecurityHeaders
 {
     public function apply()
     {
-        /** @var CI_Controller&object{csp_nonce: string} $CI csp_nonce is read back by csp_nonce_attr() in theme_helper.php */
         $CI = &get_instance();
 
-        // Outside development, inline <script>/<style> are allowed only if
-        // they carry this request's nonce (see csp_nonce_attr() in
-        // theme_helper.php). Development keeps 'unsafe-inline' because
-        // DevelBar injects its own — and a nonce would make browsers
-        // ignore 'unsafe-inline'.
-        $CI->csp_nonce = ENVIRONMENT === 'development' ? '' : base64_encode(random_bytes(16));
+        // Outside development, inline <script>/<style> run only with this
+        // request's nonce (csp_nonce_attr() in theme_helper.php).
+        $nonce = Csp::nonce();
 
         $CI->output->set_header('X-Content-Type-Options: nosniff');
         $CI->output->set_header('X-Frame-Options: SAMEORIGIN');
         $CI->output->set_header('Referrer-Policy: strict-origin-when-cross-origin');
         $CI->output->set_header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
-        $CI->output->set_header('Content-Security-Policy: '.$this->content_security_policy($CI->csp_nonce));
+        $CI->output->set_header('Content-Security-Policy: '.$this->content_security_policy($nonce));
     }
 
     private function content_security_policy($nonce)
