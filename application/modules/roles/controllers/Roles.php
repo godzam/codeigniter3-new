@@ -10,6 +10,7 @@ use App\Auth\RoleRules;
  *
  * Routes (application/config/routes.php):
  *   GET       /admin/roles                 roles.view
+ *   GET       /admin/roles/data            roles.view   (JSON for the DataTable)
  *   GET|POST  /admin/roles/create          roles.create
  *   GET|POST  /admin/roles/edit/{slug}     roles.edit   (view-only for super_admin)
  *   POST      /admin/roles/delete/{slug}   roles.delete
@@ -21,6 +22,7 @@ use App\Auth\RoleRules;
  *
  * @property Template $template
  * @property Rbac $rbac
+ * @property Datatable $datatable
  * @property CI_Input $input
  */
 class Roles extends MX_Controller
@@ -40,11 +42,62 @@ class Roles extends MX_Controller
             ->set_title('Roles')
             ->set_breadcrumbs(['Home' => '', 'Roles' => null])
             ->render('index', [
-                'roles' => $this->rbac->roles(),
                 'can_create' => can('roles.create'),
-                'can_edit' => can('roles.edit'),
-                'can_delete' => can('roles.delete'),
             ], 'admin');
+    }
+
+    /**
+     * Server-side rows for the Roles table.
+     */
+    public function data()
+    {
+        require_permission('roles.view');
+
+        $canEdit = can('roles.edit');
+        $canDelete = can('roles.delete');
+        $e = static function ($v) {
+            return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+        };
+
+        $this->datatable
+            ->from(static function ($db) {
+                $db->from('roles r');
+            })
+            ->select(
+                'r.slug, r.name, r.description, r.is_system, r.is_default,
+                 (SELECT COUNT(*) FROM users u WHERE u.role = r.slug) AS users_count,
+                 (SELECT COUNT(*) FROM role_permissions rp WHERE rp.role_id = r.id) AS permissions_count'
+            )
+            ->column('role', 'r.name')
+            ->column('key', 'r.slug')
+            ->column('users', '(SELECT COUNT(*) FROM users u WHERE u.role = r.slug)', false)
+            ->column('permissions', '(SELECT COUNT(*) FROM role_permissions rp WHERE rp.role_id = r.id)', false, false)
+            ->column('actions', null)
+            ->default_order(['r.is_system DESC', 'r.name ASC'])
+            ->respond(function ($r) use ($canEdit, $canDelete, $e) {
+                $locked = (bool) $r['is_system'];
+
+                $role = '<span class="fw-semibold">'.$e($r['name']).'</span>'
+                    .($locked ? ' <span class="badge text-bg-danger ms-1"><i class="bi bi-lock-fill"></i> Built in</span>' : '')
+                    .($r['is_default'] ? ' <span class="badge text-bg-primary ms-1">Default for sign-ups</span>' : '')
+                    .(!empty($r['description']) ? '<div class="small text-body-secondary">'.$e($r['description']).'</div>' : '');
+
+                $actions = '<a href="'.site_url('admin/roles/edit/'.rawurlencode($r['slug'])).'" class="btn btn-sm btn-outline-secondary">'
+                    .(($locked || !$canEdit) ? 'View' : 'Edit').'</a>';
+                if ($canDelete && !$locked) {
+                    $actions .= ' '.form_open('admin/roles/delete/'.rawurlencode($r['slug']), ['class' => 'd-inline', 'data-confirm' => 'Delete the role "'.$r['name'].'"?'])
+                        .'<button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i><span class="visually-hidden">Delete</span></button>'
+                        .form_close();
+                }
+
+                return [
+                    'role' => $role,
+                    'key' => '<code>'.$e($r['slug']).'</code>',
+                    'users' => (int) $r['users_count'],
+                    'permissions' => $locked ? 'All' : (int) $r['permissions_count'],
+                    'actions' => $actions,
+                ];
+            });
     }
 
     public function create()

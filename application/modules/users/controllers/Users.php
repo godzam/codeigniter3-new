@@ -9,6 +9,7 @@ use App\Auth\RoleRules;
  *
  * Routes (application/config/routes.php):
  *   GET  /admin/users               users.view
+ *   GET  /admin/users/data          users.view   (JSON for the DataTable)
  *   POST /admin/users/role/{id}     users.assign_role
  *
  * Guard rails (see RoleRules::assignmentBlocker): only a super admin can
@@ -18,6 +19,7 @@ use App\Auth\RoleRules;
  *
  * @property Template $template
  * @property Rbac $rbac
+ * @property Datatable $datatable
  * @property CI_Input $input
  */
 class Users extends MX_Controller
@@ -34,13 +36,64 @@ class Users extends MX_Controller
         $this->template
             ->set_title('Users')
             ->set_breadcrumbs(['Home' => '', 'Users' => null])
-            ->render('index', [
-                'users' => $this->rbac->users(),
-                'roles' => $this->assignable_roles(),
-                'can_assign' => can('users.assign_role'),
-                'my_id' => (int) current_user()['id'],
-                'viewer_is_super' => is_super_admin(),
-            ], 'admin');
+            ->render('index', ['can_assign' => can('users.assign_role')], 'admin');
+    }
+
+    /**
+     * Server-side rows for the Users table.
+     */
+    public function data()
+    {
+        $roles = $this->assignable_roles();
+        $names = array_column($this->rbac->roles(), 'name', 'slug');
+        $canAssign = can('users.assign_role');
+        $myId = (int) current_user()['id'];
+        $viewerIsSuper = is_super_admin();
+        $e = static function ($v) {
+            return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+        };
+
+        $this->datatable
+            ->from(static function ($db) {
+                $db->from('users u');
+            })
+            ->select('u.id, u.name, u.email, u.role, u.created_at')
+            ->column('name', 'u.name')
+            ->column('email', 'u.email')
+            ->column('role', 'u.role')
+            ->column('joined', 'u.created_at', false)
+            ->default_order(['u.id ASC'])
+            ->respond(function ($u) use ($roles, $names, $canAssign, $myId, $viewerIsSuper, $e) {
+                $isSuper = $u['role'] === RoleRules::SUPER_ADMIN;
+                // Only a super admin can change a super admin's role, or their own.
+                $locked = !$viewerIsSuper && ($isSuper || (int) $u['id'] === $myId);
+
+                $name = $e($u['name']).((int) $u['id'] === $myId ? ' <span class="badge text-bg-secondary ms-1">you</span>' : '');
+
+                if ($canAssign && !$locked) {
+                    $options = '';
+                    if (!isset($names[$u['role']])) {
+                        $options .= '<option value="'.$e($u['role']).'" selected>'.$e($u['role']).'</option>';
+                    }
+                    foreach ($roles as $r) {
+                        $options .= '<option value="'.$e($r['slug']).'"'.($r['slug'] === $u['role'] ? ' selected' : '').'>'.$e($r['name']).'</option>';
+                    }
+                    $role = form_open('admin/users/role/'.(int) $u['id'], ['class' => 'd-flex gap-2'])
+                        .'<select name="role" class="form-select form-select-sm" aria-label="Role for '.$e($u['name']).'">'.$options.'</select>'
+                        .'<button type="submit" class="btn btn-sm btn-outline-primary">Save</button>'
+                        .form_close();
+                } else {
+                    $role = '<span class="badge text-bg-'.($isSuper ? 'danger' : 'secondary').'">'.$e($names[$u['role']] ?? $u['role']).'</span>'
+                        .($canAssign && $locked ? ' <i class="bi bi-lock-fill text-body-secondary ms-1" title="You cannot change this role"></i>' : '');
+                }
+
+                return [
+                    'name' => $name,
+                    'email' => '<span class="text-body-secondary">'.$e($u['email']).'</span>',
+                    'role' => $role,
+                    'joined' => '<span class="text-body-secondary small">'.$e(substr((string) $u['created_at'], 0, 10)).'</span>',
+                ];
+            });
     }
 
     public function role($id)
