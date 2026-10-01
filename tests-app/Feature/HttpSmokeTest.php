@@ -83,4 +83,30 @@ final class HttpSmokeTest extends TestCase
         $this->assertStringNotContainsString('PHP Error was encountered', $body);
         $this->assertStringContainsString('rendered by Modules::run', $body);
     }
+
+    public function testUnknownRouteRendersCustom404Page(): void
+    {
+        $client = new Client(['base_uri' => self::$baseUri, 'http_errors' => false]);
+
+        $response = $client->get('/this-page-does-not-exist');
+
+        $this->assertSame(404, $response->getStatusCode());
+        $body = (string) $response->getBody();
+        $this->assertStringContainsString('<title>404 | Not Found</title>', $body);
+        $this->assertStringNotContainsString('PHP Error was encountered', $body);
+    }
+
+    public function testUnknownRouteReturnsJsonErrorForApiRequests(): void
+    {
+        $client = new Client(['base_uri' => self::$baseUri, 'http_errors' => false]);
+
+        $response = $client->get('/this-page-does-not-exist', ['headers' => ['Accept' => 'application/json']]);
+
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertStringStartsWith('application/json', $response->getHeaderLine('Content-Type'));
+        $this->assertSame(
+            ['status' => 404, 'error' => 'Not Found', 'message' => 'The page you requested was not found.'],
+            json_decode((string) $response->getBody(), true)
+        );
+    }
 }
