@@ -9,6 +9,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * Modules::run().
  *
  * @property Example_model $example_model Loaded in the constructor below.
+ * @property Template $template
  */
 class Example extends MX_Controller
 {
@@ -25,7 +26,7 @@ class Example extends MX_Controller
             'widget' => Modules::run('example/widget'),
         ];
 
-        $this->load->view('index', $data);
+        $this->template->set_title('Example module')->render('index', $data, 'public');
     }
 
     public function widget()

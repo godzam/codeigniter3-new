@@ -1,34 +1,33 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="utf-8">
-	<title>Register</title>
-	<style>
-		body { font: 16px/1.5 -apple-system, Segoe UI, Helvetica, Arial, sans-serif; max-width: 400px; margin: 60px auto; color: #333; }
-		label { display: block; margin-top: 12px; font-weight: 600; }
-		input { width: 100%; padding: 8px; box-sizing: border-box; margin-top: 4px; }
-		button { margin-top: 20px; padding: 8px 16px; }
-		.error { color: #b00020; }
-	</style>
-</head>
-<body>
-	<h1>Register</h1>
+<?php defined('BASEPATH') OR exit('No direct script access allowed') ?>
+<h1 class="h4 mb-4 text-center">Create an account</h1>
 
-	<?php echo validation_errors('<p class="error">', '</p>') ?>
+<?php echo form_open('register') ?>
+	<div class="mb-3">
+		<label for="name" class="form-label">Name</label>
+		<div class="input-group">
+			<span class="input-group-text"><i class="bi bi-person"></i></span>
+			<input type="text" class="form-control" name="name" id="name" value="<?php echo set_value('name') ?>" autocomplete="name" required autofocus>
+		</div>
+	</div>
 
-	<?php echo form_open('register') ?>
-		<label for="name">Name</label>
-		<input type="text" name="name" id="name" value="<?php echo set_value('name') ?>" required>
+	<div class="mb-3">
+		<label for="email" class="form-label">Email</label>
+		<div class="input-group">
+			<span class="input-group-text"><i class="bi bi-envelope"></i></span>
+			<input type="email" class="form-control" name="email" id="email" value="<?php echo set_value('email') ?>" autocomplete="username" required>
+		</div>
+	</div>
 
-		<label for="email">Email</label>
-		<input type="email" name="email" id="email" value="<?php echo set_value('email') ?>" required>
+	<div class="mb-4">
+		<label for="password" class="form-label">Password</label>
+		<div class="input-group">
+			<span class="input-group-text"><i class="bi bi-lock"></i></span>
+			<input type="password" class="form-control" name="password" id="password" autocomplete="new-password" required minlength="8">
+		</div>
+		<div class="form-text">At least 8 characters.</div>
+	</div>
 
-		<label for="password">Password</label>
-		<input type="password" name="password" id="password" required minlength="8">
+	<button type="submit" class="btn btn-primary w-100">Register</button>
+<?php echo form_close() ?>
 
-		<button type="submit">Register</button>
-	<?php echo form_close() ?>
-
-	<p>Already have an account? <a href="<?php echo site_url('login') ?>">Log in</a></p>
-</body>
-</html>
+<p class="text-center small mt-4 mb-0">Already have an account? <a href="<?php echo site_url('login') ?>">Log in</a></p>
