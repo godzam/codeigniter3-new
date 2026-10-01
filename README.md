@@ -246,6 +246,17 @@ App.confirm({title: 'Delete it?'}).then(r => r.isConfirmed && ...);
 <form method="post" data-confirm="Send the invoice?">...</form>
 ```
 
+### Content-Security-Policy and inline scripts
+
+Outside `development`, `application/hooks/SecurityHeaders.php` sends a strict CSP with a per-request nonce, so an inline `<script>`/`<style>` only runs if it carries that nonce, and inline event handlers (`onclick="..."`) never run. The layouts already comply; in your own views:
+
+```php
+<script<?php echo csp_nonce_attr() ?>>/* inline code */</script>   <!-- or move it to assets/js/ -->
+<button data-toast="success|Saved!">…</button>                      <!-- instead of onclick -->
+```
+
+`style="..."` attributes are allowed. Development keeps `'unsafe-inline'` (DevelBar needs it), so a missing nonce only shows up in production — test with `CI_ENV=testing` (same policy, no environment config overrides).
+
 ### Assets
 
 Bootstrap, Bootstrap Icons, and SweetAlert2 are vendored in `assets/vendor/` (no CDN, works offline) — to upgrade one, replace its folder with the new release's files. Your own CSS/JS go in `assets/css/app.css` and `assets/js/app.js`. `asset_url('css/app.css')` adds a cache-busting `?v=` so edits show up immediately.

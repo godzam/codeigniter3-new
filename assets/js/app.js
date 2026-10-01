@@ -41,13 +41,16 @@
 
 	// <a href="..." data-confirm="Delete this?"> and
 	// <form data-confirm="Save changes?"> ask first, then continue.
+	// data-confirm-toast="type|message" shows a toast instead of following the link.
 	document.addEventListener('click', function (e) {
 		var el = e.target.closest('a[data-confirm], button[data-confirm]');
 		if (!el || !window.Swal) { return; }
 		e.preventDefault();
 		window.App.confirm({ title: el.getAttribute('data-confirm'), text: el.getAttribute('data-confirm-text') || undefined }).then(function (r) {
 			if (!r.isConfirmed) { return; }
-			if (el.tagName === 'A') { window.location.href = el.href; }
+			var toast = el.getAttribute('data-confirm-toast');
+			if (toast) { var t = toast.split('|'); window.App.toast(t[0], t.slice(1).join('|')); }
+			else if (el.tagName === 'A') { window.location.href = el.href; }
 			else if (el.form) { el.form.removeAttribute('data-confirm'); el.form.requestSubmit ? el.form.requestSubmit(el) : el.form.submit(); }
 		});
 	});
@@ -58,6 +61,14 @@
 		window.App.confirm({ title: form.getAttribute('data-confirm') }).then(function (r) {
 			if (r.isConfirmed) { form.removeAttribute('data-confirm'); form.submit(); }
 		});
+	});
+
+	// <button data-toast="success|Saved!"> shows a toast on click.
+	document.addEventListener('click', function (e) {
+		var el = e.target.closest('[data-toast]');
+		if (!el) { return; }
+		var t = el.getAttribute('data-toast').split('|');
+		window.App.toast(t[0], t.slice(1).join('|'));
 	});
 
 	// ---- Light / dark / auto toggle ----------------------------------

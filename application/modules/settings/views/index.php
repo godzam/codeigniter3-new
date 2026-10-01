@@ -107,7 +107,7 @@ $active = $first_error_group ?: array_key_first($groups);
 					<div class="mb-3">
 						<span class="badge text-bg-primary">Primary</span>
 						<span class="badge text-bg-secondary">Secondary</span>
-						<a href="#" onclick="return false">A link</a>
+						<a href="#">A link</a>
 					</div>
 					<div class="alert alert-primary py-2 mb-3">A primary alert</div>
 					<input type="text" class="form-control mb-3" placeholder="Focus me to see the ring">

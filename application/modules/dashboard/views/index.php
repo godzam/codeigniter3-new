@@ -27,7 +27,7 @@ $name = htmlspecialchars((string) $user['name'], ENT_QUOTES, 'UTF-8');
 	<div class="card-body">
 		<h2 class="h5">Welcome, <?php echo $name ?></h2>
 		<p class="mb-3 text-body-secondary">This page is <code>application/modules/dashboard/</code>, rendered in the admin layout. The sidebar comes from <code>application/config/menu.php</code>.</p>
-		<button type="button" class="btn btn-primary" onclick="App.toast('success', 'SweetAlert2 toast works')">Show a toast</button>
-		<button type="button" class="btn btn-outline-danger" onclick="App.confirm({title: 'Delete this item?', text: 'You will not be able to undo this.', icon: 'warning'}).then(function (r) { if (r.isConfirmed) App.toast('info', 'Deleted (demo only)'); })">Ask for confirmation</button>
+		<button type="button" class="btn btn-primary" data-toast="success|SweetAlert2 toast works">Show a toast</button>
+		<a href="#" class="btn btn-outline-danger" data-confirm="Delete this item?" data-confirm-text="You will not be able to undo this." data-confirm-toast="info|Deleted (demo only)">Ask for confirmation</a>
 	</div>
 </div>

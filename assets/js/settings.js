@@ -10,6 +10,9 @@
 	var preview = document.getElementById('theme-preview');
 	if (!preview) { return; }
 
+	// The preview's links and buttons are decoration only.
+	preview.addEventListener('click', function (e) { if (e.target.closest('a')) { e.preventDefault(); } });
+
 	function normalize(hex) {
 		hex = String(hex || '').trim().replace(/^#/, '').toLowerCase();
 		if (/^[0-9a-f]{3}$/.test(hex)) { hex = hex.replace(/(.)/g, '$1$1'); }

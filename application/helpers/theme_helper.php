@@ -40,6 +40,22 @@ if (!function_exists('asset_url')) {
     }
 }
 
+if (!function_exists('csp_nonce_attr')) {
+    /**
+     * ' nonce="..."' for an inline <script>/<style> tag, so it runs under
+     * the production Content-Security-Policy (application/hooks/
+     * SecurityHeaders.php). Empty in development, where 'unsafe-inline'
+     * is already allowed.
+     */
+    function csp_nonce_attr()
+    {
+        $CI = &get_instance();
+        $nonce = $CI->csp_nonce ?? '';
+
+        return $nonce === '' ? '' : ' nonce="'.htmlspecialchars($nonce, ENT_QUOTES, 'UTF-8').'"';
+    }
+}
+
 if (!function_exists('theme_css_vars')) {
     /**
      * The <style> block that turns the saved settings into Bootstrap CSS
@@ -95,7 +111,7 @@ if (!function_exists('theme_css_vars')) {
             return $selector.'{'.$css.'}';
         };
 
-        return '<style id="app-theme-vars">'
+        return '<style id="app-theme-vars"'.csp_nonce_attr().'>'
             .$block(':root,[data-bs-theme=light]', $light + $shared)
             .$block('[data-bs-theme=dark]', $dark)
             .'</style>';
@@ -114,7 +130,7 @@ if (!function_exists('theme_mode_script')) {
         $mode = in_array(app_setting('theme_mode'), ['light', 'dark', 'auto'], true) ? app_setting('theme_mode') : 'auto';
         $allow = app_setting('theme_allow_toggle') ? 'true' : 'false';
 
-        return '<script>(function(){var d="'.$mode.'",a='.$allow.',s=null;'
+        return '<script'.csp_nonce_attr().'>(function(){var d="'.$mode.'",a='.$allow.',s=null;'
             .'try{if(a)s=localStorage.getItem("app-theme")}catch(e){}'
             .'var m=(s==="light"||s==="dark"||s==="auto")?s:d,q=window.matchMedia("(prefers-color-scheme: dark)");'
             .'function f(){document.documentElement.setAttribute("data-bs-theme",m==="auto"?(q.matches?"dark":"light"):m)}'
@@ -151,8 +167,8 @@ if (!function_exists('theme_foot')) {
         $flash = json_encode(flash_messages(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
 
         return '<script src="'.asset_url('vendor/bootstrap/js/bootstrap.bundle.min.js').'"></script>'."\n\t"
-            .'<script src="'.asset_url('vendor/sweetalert2/sweetalert2.all.min.js').'"></script>'."\n\t"
-            .'<script>window.AppFlash = '.$flash.';</script>'."\n\t"
+            .'<script src="'.asset_url('vendor/sweetalert2/sweetalert2.min.js').'"></script>'."\n\t"
+            .'<script'.csp_nonce_attr().'>window.AppFlash = '.$flash.';</script>'."\n\t"
             .'<script src="'.asset_url('js/app.js').'"></script>'."\n";
     }
 }
