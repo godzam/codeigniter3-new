@@ -405,6 +405,35 @@ The `admin` role is granted the new permissions automatically; give other roles 
 | Image upload | path in `VARCHAR(255)` | max size, allowed types, resized to a max width and re-encoded at a set quality (GD) |
 | File upload | path in `VARCHAR(255)` | max size, allowed extensions |
 
+### Validation rules
+
+Each text, text area, number, email and date field has a **Validation rules** panel in the builder. A field is already checked for its type (a number is a number, an email looks like one), for *Required*, *Unique*, max length and min / max; rules add to that. Pick as many as you need; the first one that fails shows its message in the form.
+
+| Kind | What it is |
+|---|---|
+| **CodeIgniter rules** | The real `CI_Form_validation` rules, chosen from a list and run by CodeIgniter itself, with CodeIgniter's messages (`system/language/<language>/form_validation_lang.php`): `min_length`, `max_length`, `exact_length`, `alpha`, `alpha_numeric`, `alpha_numeric_spaces`, `alpha_dash`, `numeric`, `integer`, `decimal`, `is_natural`, `is_natural_no_zero`, `greater_than`, `greater_than_equal_to`, `less_than`, `less_than_equal_to`, `valid_url`, `valid_emails`, `valid_ip`, `valid_base64`, plus `matches` / `differs` against another field of the module. Only rules that make sense for the input type are offered. (Required and unique are checkboxes, not rules.) |
+| **Matches a pattern** | A regular expression typed in the builder, with delimiters: `/^[A-Z]{3}-\d{4}$/`. It is checked when you save the module, so a broken pattern never reaches a form. |
+| **Custom rules from code** | Anything else: register a PHP function in `application/config/crud_rules.php` (or `application/modules/<module>/config/crud_rules.php`) and it appears in the list. |
+
+Every rule can have its own **error message**; `{field}` is replaced by the field's label and `{param}` by the rule's value. Rules only run when the field has a value (an empty optional field is fine), and they run on the server for every request, so a hand-made POST is checked the same way as the form.
+
+Registering your own rule:
+
+```php
+// application/config/crud_rules.php
+$config['crud_rules']['starts_with'] = array(
+    'label'   => 'Starts with ...',                    // shown in the builder
+    'param'   => 'text',                               // none | number | text : what the builder asks for
+    'types'   => array('text'),                        // input types it fits (default: text, textarea, number, email, date)
+    'message' => 'The {field} field must start with {param}.',
+    'rule'    => function ($value, $param, array $input) {
+        return strncmp($value, $param, strlen($param)) === 0;   // true = valid, false = use 'message'
+    },
+);
+```
+
+A rule may also return a string, which becomes the error message (handy when it depends on the value). `$input` is everything that was posted, for rules that compare fields. The key (`starts_with`) is saved in the module, so do not rename it once a module uses it; if you remove a rule from the file, modules that used it simply skip it (and log an error). A rule's code lives in your repository, never in the database, so the Generator cannot be used to inject PHP.
+
 Things to know:
 
 - **Fields are append-only.** On an existing module you can relabel fields, change options and settings, and add fields (a column is added). Names and types of existing fields are locked, and a field cannot be removed; to start over, delete the module (you must type its key; this **drops the table with all its records**, deletes its uploaded files and its permissions).

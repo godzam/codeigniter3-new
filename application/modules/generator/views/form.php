@@ -5,6 +5,7 @@
  * @var array<string, string> $errors      "slug", "fields.2.name", ...
  * @var array<int, string> $locked         existing column names (cannot be renamed or re-typed)
  * @var array<string, string> $types
+ * @var array<int, array<string, mixed>> $rule_catalog  validation rules the builder offers
  */
 $e = static function ($v) { return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); };
 $editing = $module !== null;
@@ -13,6 +14,7 @@ $config = [
 	'fields' => array_values((array) ($values['fields'] ?? [])),
 	'locked' => $locked,
 	'types' => $types,
+	'rules' => $rule_catalog,
 	'errors' => $errors,
 ];
 ?>

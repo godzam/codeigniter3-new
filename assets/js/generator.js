@@ -39,6 +39,8 @@
 	var holder = document.getElementById('g-fields');
 	var locked = config.locked || [];
 	var typeLabels = config.types;
+	var catalog = config.rules || [];
+	var RULE_TYPES = ['text', 'textarea', 'number', 'email', 'date'];
 
 	function el(tag, attrs, children) {
 		var n = document.createElement(tag);
@@ -79,6 +81,89 @@
 			return at < 0 ? { value: l, label: l } : { value: l.slice(0, at).trim(), label: l.slice(at + 1).trim() };
 		});
 	};
+
+
+	// ---- Validation rules --------------------------------------------
+	function allowedRules(type) {
+		return catalog.filter(function (r) { return r.types.indexOf(type) !== -1; });
+	}
+	function ruleMeta(name) {
+		for (var i = 0; i < catalog.length; i++) { if (catalog[i].name === name) { return catalog[i]; } }
+		return null;
+	}
+	function otherNames(card) {
+		var own = card.querySelector('[data-prop=name]').value.trim();
+		return Array.prototype.map.call(holder.querySelectorAll('.g-field [data-prop=name]'), function (i) { return i.value.trim(); })
+			.filter(function (n, idx, all) { return n && n !== own && all.indexOf(n) === idx; });
+	}
+	function fillRuleSelect(select, type, current) {
+		select.innerHTML = '';
+		var groups = {};
+		allowedRules(type).forEach(function (r) {
+			if (!groups[r.group]) { groups[r.group] = el('optgroup', { label: r.group }); select.appendChild(groups[r.group]); }
+			var o = el('option', { value: r.name, text: r.label });
+			if (r.name === current) { o.selected = true; }
+			groups[r.group].appendChild(o);
+		});
+		return select;
+	}
+	function fillFieldSelect(select, card, current) {
+		select.innerHTML = '';
+		var names = otherNames(card);
+		if (current && names.indexOf(current) === -1) { names.unshift(current); }
+		names.forEach(function (n) { var o = el('option', { value: n, text: n }); if (n === current) { o.selected = true; } select.appendChild(o); });
+		if (!names.length) { select.appendChild(el('option', { value: '', text: '(add another field first)' })); }
+	}
+	// The parameter input depends on the chosen rule: none, a number, another field, text or a regex.
+	function renderParam(row, kind, value) {
+		var slot = row.querySelector('[data-slot=param]');
+		var card = row.closest('.g-field');
+		slot.innerHTML = '';
+		slot.classList.toggle('d-none', kind === 'none' || !kind);
+		if (kind === 'none' || !kind) { return; }
+		var input;
+		if (kind === 'field') { input = el('select', { class: 'form-select form-select-sm', 'data-r': 'param' }); fillFieldSelect(input, card, value); }
+		else if (kind === 'regex') { input = text('', value, { class: 'form-control form-control-sm font-monospace', placeholder: '/^[A-Z]{3}-\\d{4}$/', spellcheck: 'false', 'data-r': 'param' }); }
+		else if (kind === 'length') { input = num(value, { min: 1, max: 10000, step: 1, placeholder: 'N', 'data-r': 'param' }); }
+		else if (kind === 'number') { input = num(value, { step: 'any', placeholder: 'N', 'data-r': 'param' }); }
+		else { input = text('', value, { maxlength: 100, 'data-r': 'param' }); }
+		input.setAttribute('data-prop', 'rules.' + row._idx + '.param');
+		slot.appendChild(el('label', { class: 'form-label small mb-1', text: kind === 'regex' ? 'Pattern' : (kind === 'field' ? 'Field' : 'Value') }));
+		slot.appendChild(input);
+		slot.appendChild(el('div', { class: 'invalid-feedback' }));
+	}
+	function addRule(card, r) {
+		r = r || {};
+		var type = card.querySelector('[data-prop=type]').value;
+		var box = card.querySelector('[data-role=rules]');
+		var row = el('div', { class: 'g-rule row g-2 align-items-end border rounded p-2 mx-0' });
+		row._idx = box.querySelectorAll('.g-rule').length;
+
+		var select = el('select', { class: 'form-select form-select-sm', 'data-r': 'rule', 'data-prop': 'rules.' + row._idx + '.rule' });
+		fillRuleSelect(select, type, r.rule);
+		var message = text('', r.message, { maxlength: 200, placeholder: 'Error message (optional) – {field}, {param}', 'data-r': 'message' });
+		message.setAttribute('data-prop', 'rules.' + row._idx + '.message');
+
+		row.appendChild(el('div', { class: 'col-12 col-md-4' }, [el('label', { class: 'form-label small mb-1', text: 'Rule' }), select, el('div', { class: 'invalid-feedback' })]));
+		row.appendChild(el('div', { class: 'col-12 col-md-3', 'data-slot': 'param' }));
+		row.appendChild(el('div', { class: 'col-12 col-md' }, [el('label', { class: 'form-label small mb-1', text: 'Message' }), message, el('div', { class: 'invalid-feedback' })]));
+		row.appendChild(el('div', { class: 'col-auto' }, [el('button', { type: 'button', class: 'btn btn-sm btn-outline-danger', 'data-act': 'remove-rule', 'aria-label': 'Remove rule' }, [el('i', { class: 'bi bi-x-lg' })])]));
+		box.appendChild(row);
+
+		var meta = ruleMeta(select.value);
+		renderParam(row, meta ? meta.param : 'none', r.param);
+		return row;
+	}
+	// After the input type changes, drop the rules that no longer fit it.
+	function refreshRules(card) {
+		var type = card.querySelector('[data-prop=type]').value;
+		var allowed = allowedRules(type).map(function (r) { return r.name; });
+		card.querySelectorAll('.g-rule').forEach(function (row) {
+			var select = row.querySelector('[data-r=rule]');
+			if (allowed.indexOf(select.value) === -1) { row.remove(); }
+			else { fillRuleSelect(select, type, select.value); }
+		});
+	}
 
 	function buildCard(f, index) {
 		var isLocked = f.name && locked.indexOf(f.name) !== -1;
@@ -146,6 +231,14 @@
 					group('Label column', text('options.label_column', o.label_column || 'name', { spellcheck: 'false' }), 'options.label_column', 'col-12 col-sm-4')
 				])])
 			]),
+			el('div', { class: 'mt-3', 'data-for': 'text,textarea,number,email,date' }, [
+				el('div', { class: 'd-flex align-items-center justify-content-between mb-1' }, [
+					el('span', { class: 'small fw-semibold', text: 'Validation rules' }),
+					el('button', { type: 'button', class: 'btn btn-sm btn-outline-secondary', 'data-act': 'add-rule' }, [el('i', { class: 'bi bi-plus-lg me-1' }), document.createTextNode('Add rule')])
+				]),
+				el('div', { class: 'vstack gap-2', 'data-role': 'rules' }),
+				el('div', { class: 'form-text', text: 'On top of what the input type, Required, Unique, length and min/max already check. Your own rules: application/config/crud_rules.php.' })
+			]),
 			el('div', { class: 'row g-2', 'data-for': 'image,file' }, [
 				group('Max size (KB)', num(u.max_kb || '', { min: 1, max: 51200, placeholder: 'image 2048 / file 5120' }), 'upload.max_kb'),
 				group('Allowed types', text('upload.types', [].concat(u.types || []).join(', '), { placeholder: 'image: jpg, png, webp / file: pdf, docx, zip', spellcheck: 'false' }), 'upload.types', 'col-12 col-sm-6 col-lg-8')
@@ -173,6 +266,7 @@
 		});
 		var mode = card.querySelector('[data-prop="options.mode"]').value;
 		card.querySelectorAll('[data-source]').forEach(function (p) { p.classList.toggle('d-none', p.getAttribute('data-source') !== mode); });
+		refreshRules(card);
 	}
 
 	function renumber() {
@@ -183,6 +277,7 @@
 		var card = buildCard(f || {}, holder.children.length);
 		holder.appendChild(card);
 		applyType(card);
+		(f && f.rules ? f.rules : []).forEach(function (r) { addRule(card, r); });
 		return card;
 	}
 
@@ -193,6 +288,10 @@
 			label: v('label').trim(), name: v('name').trim(), type: type,
 			required: v('required'), list: v('list'), unique: v('unique'), help: v('help').trim()
 		};
+		f.rules = RULE_TYPES.indexOf(type) === -1 ? [] : Array.prototype.map.call(card.querySelectorAll('.g-rule'), function (row) {
+			var param = row.querySelector('[data-r=param]');
+			return { rule: row.querySelector('[data-r=rule]').value, param: param ? param.value : '', message: row.querySelector('[data-r=message]').value };
+		});
 		if (type === 'text' || type === 'textarea') { f.maxlength = v('maxlength'); }
 		if (type === 'number') { f.integer = v('integer'); f.min = v('min'); f.max = v('max'); }
 		if (type === 'password') { f.min_length = v('min_length'); }
@@ -235,12 +334,23 @@
 	holder.addEventListener('change', function (e) {
 		var card = e.target.closest('.g-field');
 		if (card && (e.target.getAttribute('data-prop') === 'type' || e.target.getAttribute('data-prop') === 'options.mode')) { applyType(card); }
+		if (card && e.target.getAttribute('data-r') === 'rule') {
+			var meta = ruleMeta(e.target.value);
+			renderParam(e.target.closest('.g-rule'), meta ? meta.param : 'none', '');
+		}
+	});
+	// "Same as field ..." lists the other fields as they are right now.
+	holder.addEventListener('focusin', function (e) {
+		var t = e.target;
+		if (t.tagName === 'SELECT' && t.getAttribute('data-r') === 'param') { fillFieldSelect(t, t.closest('.g-field'), t.value); }
 	});
 	holder.addEventListener('click', function (e) {
 		var b = e.target.closest('[data-act]');
 		if (!b) { return; }
 		var card = b.closest('.g-field');
 		var act = b.getAttribute('data-act');
+		if (act === 'add-rule') { addRule(card, {}); return; }
+		if (act === 'remove-rule') { b.closest('.g-rule').remove(); return; }
 		if (act === 'remove') { card.remove(); }
 		else if (act === 'up' && card.previousElementSibling) { holder.insertBefore(card, card.previousElementSibling); }
 		else if (act === 'down' && card.nextElementSibling) { holder.insertBefore(card.nextElementSibling, card); }

@@ -21,6 +21,7 @@ use App\Crud\FieldTypes;
  *
  * @property Template $template
  * @property Crud_store $crud_store
+ * @property Crud_rules $crud_rules
  * @property Datatable $datatable
  * @property CI_Input $input
  */
@@ -36,6 +37,7 @@ class Module_generator extends MX_Controller
         }
 
         $this->load->helper('form');
+        $this->load->library('crud_rules');
     }
 
     public function index()
@@ -146,7 +148,8 @@ class Module_generator extends MX_Controller
             $module === null ? $this->crud_store->taken_slugs() : [],
             function ($table, $column = null) {
                 return $this->crud_store->schema_has($table, $column);
-            }
+            },
+            $this->crud_rules->meta()
         );
 
         if ($result['definition'] === null) {
@@ -194,6 +197,7 @@ class Module_generator extends MX_Controller
                 'errors' => $errors,
                 'locked' => $locked,
                 'types' => FieldTypes::labels(),
+                'rule_catalog' => $this->crud_rules->catalog(),
             ], 'admin');
     }
 }

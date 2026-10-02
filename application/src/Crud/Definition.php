@@ -30,10 +30,11 @@ final class Definition
      * @param array<string, mixed>|null $existing the stored definition when editing
      * @param array<int, string>        $taken    slugs already used by other modules or permission groups
      * @param callable                  $schema   fn(string $table, ?string $column = null): bool, whether it exists in the database
+     * @param array<string, array{label: string, param: string, types: array<int, string>}> $registered validation rules registered in code
      *
      * @return array{definition: array<string, mixed>|null, errors: array<string, string>}
      */
-    public static function normalize(array $input, ?array $existing, array $taken, callable $schema)
+    public static function normalize(array $input, ?array $existing, array $taken, callable $schema, array $registered = [])
     {
         $errors = [];
         $editing = $existing !== null;
@@ -82,11 +83,15 @@ final class Definition
             $oldByName[$old['name']] = $old;
         }
 
+        $fieldNames = array_map(static function ($raw) {
+            return is_array($raw) ? strtolower(trim((string) ($raw['name'] ?? ''))) : '';
+        }, $rawFields);
+
         $fields = [];
         $seen = [];
         foreach ($rawFields as $i => $raw) {
             $raw = is_array($raw) ? $raw : [];
-            [$field, $fieldErrors] = self::field($raw, $oldByName, $schema);
+            [$field, $fieldErrors] = self::field($raw, $oldByName, $schema, $registered, $fieldNames);
 
             $name = $field['name'];
             if ($name !== '' && isset($seen[$name])) {
@@ -126,10 +131,11 @@ final class Definition
     /**
      * @param array<string, mixed>                $raw
      * @param array<string, array<string, mixed>> $oldByName
+     * @param array<int, string>                  $fieldNames
      *
      * @return array{0: array<string, mixed>, 1: array<string, string>}
      */
-    private static function field(array $raw, array $oldByName, callable $schema)
+    private static function field(array $raw, array $oldByName, callable $schema, array $registered, array $fieldNames)
     {
         $e = [];
         $name = strtolower(trim((string) ($raw['name'] ?? '')));
@@ -203,6 +209,12 @@ final class Definition
             foreach ($uploadErrors as $k => $m) {
                 $e['upload.'.$k] = $m;
             }
+        }
+
+        $checked = ValidationRules::normalize($raw['rules'] ?? [], $type, $registered, $fieldNames, $name);
+        $field['rules'] = $checked['rules'];
+        foreach ($checked['errors'] as $k => $m) {
+            $e['rules.'.$k] = $m;
         }
 
         $field['search'] = $field['list'] && FieldTypes::isSearchable($type);

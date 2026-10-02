@@ -11,6 +11,8 @@ namespace App\Crud;
  *
  *   $lookup(array $field, array $values): array  the subset of $values that exist in a table-backed field
  *   $isTaken(string $column, string $value, ?int $ignoreId): bool  unique check
+ *   $rules(array $field, string $value, array $input): ?string     the field's extra validation rules
+ *                                                                  (null = passed, else the error message)
  */
 final class RecordValidator
 {
@@ -22,7 +24,7 @@ final class RecordValidator
      *
      * @return array{values: array<string, mixed>, errors: array<string, string>}
      */
-    public static function validate(array $definition, array $input, ?array $existing, array $uploads, callable $lookup, callable $isTaken)
+    public static function validate(array $definition, array $input, ?array $existing, array $uploads, callable $lookup, callable $isTaken, ?callable $rules = null)
     {
         $values = [];
         $errors = [];
@@ -104,6 +106,15 @@ final class RecordValidator
                 $errors[$name] = $message;
 
                 continue;
+            }
+
+            if ($rules !== null && !empty($field['rules'])) {
+                $failed = $rules($field, $value, $input);
+                if ($failed !== null) {
+                    $errors[$name] = $failed;
+
+                    continue;
+                }
             }
 
             if (!empty($field['unique']) && $isTaken($name, $value, $id)) {
