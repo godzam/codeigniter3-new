@@ -225,6 +225,7 @@ array('label' => 'Users', 'icon' => 'bi-people', 'url' => 'users', 'role' => 'ad
 Log in as an admin and open **/admin/settings** (run `php index.php console migrate` first so the `settings` table exists). Out of the box:
 
 - **General** — application name, tagline, logo, footer text
+- **Login page** — headline, description, up to five highlights and an optional background image for the login / register screens
 - **Appearance** — primary and secondary color, default color mode (light / dark / auto), whether visitors get a light/dark switch, corner roundness, font
 - **Layout** — full-width content, compact sidebar, navbar filled with the primary color
 
@@ -239,6 +240,16 @@ $config['app_settings']['general']['fields']['support_email'] = array(
 ```
 
 Types: `text`, `textarea`, `color`, `select`, `switch`, `number`, `password` (stored as plain text — for third-party keys, not user passwords). Read a value anywhere with `$this->settings->get('support_email')` or `app_setting('support_email')` in a view. A module can register its own group with `$this->settings->register('blog', [...])`.
+
+### Look & feel
+
+The login and register pages are a split screen: a brand panel (colored from your primary color, or a photo you set under *Login page*) next to the form; on phones the panel becomes a header above the form. The admin has a sidebar with section headings, a tinted active item and a user card (it becomes an off-canvas drawer on phones), a sticky top bar with an avatar menu, and a dashboard with a greeting, real numbers, the last 14 days of sign-ups, recent users and shortcuts, all depending on what the signed-in role may see.
+
+- **Menu sections** — put `array('section' => 'Access')` in `application/config/menu.php` before the items it groups; a heading disappears when none of its items is visible to the user.
+- **Avatars and brand** — `user_avatar($name)` and `brand_mark()` (theme helper) print the initials avatar and the logo / first-letter tile.
+- **Page subtitle** — `$this->template->set_subtitle('...')` adds a line under the page title.
+- **Pills** — `<span class="pill pill-primary">` (also `-secondary`, `-danger`, `-success`, `-warning`) for soft status badges.
+- The font is Inter, served from `assets/vendor/inter/` (no external requests). Colors, radius and dark mode all follow *Settings → Appearance*.
 
 ### SweetAlert2
 
