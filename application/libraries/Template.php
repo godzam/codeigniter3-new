@@ -24,6 +24,7 @@ class Template
 
     protected $vars = [
         'page_title' => '',
+        'page_subtitle' => '',
         'breadcrumbs' => [],
         'extra_head' => '',
         'extra_foot' => '',
@@ -44,6 +45,16 @@ class Template
     public function set_title($title)
     {
         $this->vars['page_title'] = (string) $title;
+
+        return $this;
+    }
+
+    /**
+     * A line of explanation under the page title (admin layout).
+     */
+    public function set_subtitle($subtitle)
+    {
+        $this->vars['page_subtitle'] = (string) $subtitle;
 
         return $this;
     }

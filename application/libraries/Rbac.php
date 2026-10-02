@@ -42,6 +42,9 @@ class Rbac
     /** @var array<string, array<int, string>> */
     protected $permissionCache = [];
 
+    /** @var array<string, string>|null slug => display name */
+    protected $roleNames;
+
     public function __construct()
     {
         $this->CI = &get_instance();
@@ -220,6 +223,22 @@ class Rbac
         $row = $this->db()->get_where('roles', ['slug' => (string) $slug])->row_array();
 
         return $row ?: null;
+    }
+
+    /**
+     * Display name of a role slug ("editor" => "Editor"); falls back to a
+     * prettified slug when the role table can't be read.
+     */
+    public function role_label($slug)
+    {
+        if ($this->roleNames === null) {
+            $result = $this->quietly(function ($db) {
+                return $db->select('slug, name')->get('roles');
+            });
+            $this->roleNames = $result === false ? [] : array_column($result->result_array(), 'name', 'slug');
+        }
+
+        return $this->roleNames[(string) $slug] ?? ucwords(str_replace('_', ' ', (string) $slug));
     }
 
     public function default_role_slug()

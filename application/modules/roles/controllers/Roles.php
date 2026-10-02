@@ -40,6 +40,7 @@ class Roles extends MX_Controller
 
         $this->template
             ->set_title('Roles')
+            ->set_subtitle('Roles decide what a person can do. Give each user one role on the Users page.')
             ->set_breadcrumbs(['Home' => '', 'Roles' => null])
             ->render('index', [
                 'can_create' => can('roles.create'),
@@ -83,8 +84,8 @@ class Roles extends MX_Controller
                 $locked = (bool) $r['is_system'];
 
                 $role = '<span class="fw-semibold">'.$e($r['name']).'</span>'
-                    .($locked ? ' <span class="badge text-bg-danger ms-1"><i class="bi bi-lock-fill"></i> Built in</span>' : '')
-                    .($r['is_default'] ? ' <span class="badge text-bg-primary ms-1">Default for sign-ups</span>' : '')
+                    .($locked ? ' <span class="pill pill-danger ms-1"><i class="bi bi-lock-fill"></i> Built in</span>' : '')
+                    .($r['is_default'] ? ' <span class="pill pill-primary ms-1">Default for sign-ups</span>' : '')
                     .(!empty($r['description']) ? '<div class="small text-body-secondary">'.$e($r['description']).'</div>' : '');
 
                 $actions = '<a href="'.site_url('admin/roles/edit/'.rawurlencode($r['slug'])).'" class="btn btn-sm btn-outline-secondary">'

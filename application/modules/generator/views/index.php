@@ -1,6 +1,5 @@
 <?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-	<p class="text-body-secondary mb-0">Define a table and its fields; get a list, an add/edit dialog, delete, permissions and a menu entry. Developers only.</p>
+<div class="d-flex justify-content-end mb-3">
 	<a href="<?php echo site_url('admin/generator/create') ?>" class="btn btn-primary text-nowrap"><i class="bi bi-plus-lg me-1"></i>New module</a>
 </div>
 

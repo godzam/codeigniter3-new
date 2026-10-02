@@ -44,6 +44,7 @@ class Crud extends MX_Controller
 
         $this->template
             ->set_title($module['title'])
+            ->set_subtitle('Add, edit and remove '.mb_strtolower($module['title']).' records.')
             ->set_breadcrumbs(['Home' => '', $module['title'] => null])
             ->add_foot('<script src="'.asset_url('js/crud.js').'"></script>')
             ->render('index', [

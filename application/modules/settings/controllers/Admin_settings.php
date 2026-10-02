@@ -75,6 +75,7 @@ class Admin_settings extends MX_Controller
     {
         $this->template
             ->set_title('Settings')
+            ->set_subtitle('Colors, layout, login page and security. Changes apply to everyone straight away.')
             ->set_breadcrumbs(['Home' => '', 'Settings' => null])
             ->add_foot('<script src="'.asset_url('js/settings.js').'"></script>')
             ->render('index', [

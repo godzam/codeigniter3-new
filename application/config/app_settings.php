@@ -57,6 +57,36 @@ $config['app_settings'] = array(
 		),
 	),
 
+	'auth' => array(
+		'label' => 'Login page',
+		'icon' => 'bi-box-arrow-in-right',
+		'fields' => array(
+			'auth_headline' => array(
+				'label' => 'Headline',
+				'type' => 'text',
+				'default' => 'Everything you need, in one place.',
+				'help' => 'Big text on the colored side of the login and register pages.',
+			),
+			'auth_subtext' => array(
+				'label' => 'Description',
+				'type' => 'text',
+				'default' => 'Sign in to manage your users, roles and data.',
+			),
+			'auth_points' => array(
+				'label' => 'Highlights',
+				'type' => 'textarea',
+				'default' => "Role-based access for every module\nLight, dark and mobile-ready\nBuilt on CodeIgniter 3",
+				'help' => 'One per line (up to 5). Leave empty to hide the list.',
+			),
+			'auth_image' => array(
+				'label' => 'Background image',
+				'type' => 'text',
+				'default' => '',
+				'help' => 'Optional path or URL (e.g. assets/img/login.jpg). Shown under a dark overlay instead of the color gradient.',
+			),
+		),
+	),
+
 	'appearance' => array(
 		'label' => 'Appearance',
 		'icon' => 'bi-palette',

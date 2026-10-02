@@ -100,6 +100,21 @@
 	});
 	syncToggle();
 
+	// ---- Show / hide a password: <button data-toggle-password="input-id"> ---
+	document.addEventListener('click', function (e) {
+		var btn = e.target.closest('[data-toggle-password]');
+		if (!btn) { return; }
+		var input = document.getElementById(btn.getAttribute('data-toggle-password'));
+		if (!input) { return; }
+		var show = input.type === 'password';
+		input.type = show ? 'text' : 'password';
+		btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+		btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+		var icon = btn.querySelector('i');
+		if (icon) { icon.className = 'bi ' + (show ? 'bi-eye-slash' : 'bi-eye'); }
+		input.focus();
+	});
+
 	// ---- Admin sidebar (phones and tablets: off-canvas drawer) ---------
 	function setSidebar(open) {
 		var sidebar = document.getElementById('admin-sidebar');
