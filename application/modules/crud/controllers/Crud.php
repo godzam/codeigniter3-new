@@ -22,6 +22,7 @@ use App\Crud\Uploader;
  *
  * @property Template $template
  * @property Crud_store $crud_store
+ * @property Crud_rules $crud_rules
  * @property Datatable $datatable
  * @property CI_Input $input
  * @property CI_Output $output
@@ -34,6 +35,7 @@ class Crud extends MX_Controller
         parent::__construct();
         require_login();
         $this->load->helper('form');
+        $this->load->library('crud_rules');
     }
 
     public function index($slug = '')
@@ -193,6 +195,9 @@ class Crud extends MX_Controller
             },
             function ($column, $value, $ignoreId) use ($store, $module) {
                 return $store->value_taken($module, $column, $value, $ignoreId);
+            },
+            function ($field, $value, $input) use ($module) {
+                return $this->crud_rules->check($module, $field, $value, $input);
             }
         );
         $values = $result['values'];

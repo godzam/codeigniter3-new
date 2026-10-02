@@ -163,6 +163,62 @@ final class CrudRecordValidatorTest extends TestCase
         $this->assertTrue(password_verify('  spaced out  ', $spaces['values']['pass']), 'passwords are not trimmed');
     }
 
+    public function testExtraRulesRunAfterTheTypeChecksAndOnlyForFilledValues(): void
+    {
+        $fields = $this->definition['fields'];
+        foreach ($fields as &$f) {
+            if ($f['name'] === 'note') {
+                $f['rules'] = [['rule' => 'alpha', 'param' => '', 'message' => '']];
+            }
+            if ($f['name'] === 'mail') {
+                $f['rules'] = [['rule' => 'regex', 'param' => '/@corp\.test$/', 'message' => 'Use your corp address']];
+            }
+        }
+        unset($f);
+        $this->definition['fields'] = $fields;
+
+        $seen = [];
+        $rules = static function (array $field, string $value, array $input) use (&$seen) {
+            $seen[] = $field['name'].'='.$value;
+            if ($field['name'] === 'note') {
+                return ctype_alpha($value) ? null : 'Letters only';
+            }
+
+            return substr($value, -10) === '@corp.test' ? null : $field['rules'][0]['message'];
+        };
+
+        $run = function (array $input) use ($rules) {
+            return RecordValidator::validate($this->definition, $this->valid($input), null, ['photo' => 'new'], function ($f, $v) {
+                return $v;
+            }, function () {
+                return false;
+            }, $rules);
+        };
+
+        $good = $run(['note' => 'abc', 'mail' => 'me@corp.test']);
+        $this->assertSame([], $good['errors']);
+
+        $bad = $run(['note' => 'abc1', 'mail' => 'me@gmail.com']);
+        $this->assertSame('Letters only', $bad['errors']['note']);
+        $this->assertSame('Use your corp address', $bad['errors']['mail']);
+
+        $seen = [];
+        $run(['note' => '', 'mail' => '']);
+        $this->assertSame([], $seen, 'rules are not run for empty optional values');
+
+        $seen = [];
+        $run(['mail' => 'not-an-email']);
+        $this->assertSame([], $seen, 'a value that fails the type check is not run through the rules');
+
+        // Without a rules callback the stored rules are simply not applied.
+        $plain = RecordValidator::validate($this->definition, $this->valid(['note' => 'abc1']), null, ['photo' => 'new'], function ($f, $v) {
+            return $v;
+        }, function () {
+            return false;
+        });
+        $this->assertArrayNotHasKey('note', $plain['errors']);
+    }
+
     public function testOptionalEmptyValuesBecomeNull(): void
     {
         $v = $this->validate($this->valid(['note' => '', 'qty' => '', 'tags' => []]))['values'];
