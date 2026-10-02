@@ -1,9 +1,29 @@
+# Front controller for CodeIgniter (Apache: Laragon, XAMPP, Docker, shared hosting).
+# Needs mod_rewrite and "AllowOverride All" for this folder.
+
 <IfModule mod_rewrite.c>
 	RewriteEngine On
-	# If you host this in a subdirectory, add a RewriteBase line here.
+
+	# Only if the app lives in a sub-folder AND pretty URLs 404, uncomment and
+	# set the folder's URL path (with leading and trailing slash):
+	# RewriteBase /my-project/
+
+	# Never serve folders that hold source code or dependencies...
+	RewriteRule ^(?:\.git|\.github|vendor|application|system|tests|tests-app|user_guide_src)(?:/|$) - [F,NC,L]
+	# ...or files that hold secrets or tooling config (.env would be a plain download otherwise).
+	RewriteRule ^(?:\.env[^/]*|\.php-cs-fixer[^/]*|composer\.(?:json|lock)|phpstan[^/]*|phpunit[^/]*|Dockerfile|docker-compose\.ya?ml)$ - [F,NC,L]
+
+	# Everything that is not a real file or folder goes to index.php.
+	#
+	# Note "index.php?/$1" and not "index.php/$1". With the second form Apache
+	# hands PHP a script path like ".../index.php/login"; when PHP runs as
+	# CGI/FastCGI (the default in Laragon and on much shared hosting) PHP then
+	# answers "No input file specified.". The query-string form works with
+	# every PHP setup. CodeIgniter reads the pretty URL from REQUEST_URI
+	# ($config['uri_protocol']), so routing is the same either way.
 	RewriteCond %{REQUEST_FILENAME} !-f
 	RewriteCond %{REQUEST_FILENAME} !-d
-	RewriteRule ^(.*)$ index.php/$1 [L]
+	RewriteRule ^(.*)$ index.php?/$1 [L,QSA]
 </IfModule>
 
 <IfModule !mod_rewrite.c>

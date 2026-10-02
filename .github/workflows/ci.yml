@@ -88,6 +88,42 @@ jobs:
 
           kill $SERVER_PID
 
+      # The installer on a brand new MySQL database: it must create the database,
+      # run every migration, create the administrator, sign them in and then lock itself.
+      - name: One-click installer on a fresh database
+        run: |
+          export DB_DATABASE=fresh_install
+          php -S 127.0.0.1:8082 -t . index.php &
+          SERVER_PID=$!
+          sleep 1
+          jar="$(mktemp)"
+          fail() { echo "FAIL: $1"; kill $SERVER_PID; exit 1; }
+
+          page="$(curl -s -c "$jar" -b "$jar" http://127.0.0.1:8082/install)"
+          echo "$page" | grep -q 'Install now' || fail "the installer form is not shown"
+          echo "$page" | grep -q 'does not exist yet' || fail "the missing database is not announced"
+          token="$(echo "$page" | grep -o 'name="csrf_token" value="[^"]*"' | head -1 | sed 's/.*value="\([^"]*\)"/\1/')"
+          [ -n "$token" ] || fail "no CSRF token in the form"
+
+          code="$(curl -s -o /dev/null -w '%{http_code}' -c "$jar" -b "$jar" \
+            --data-urlencode "csrf_token=$token" --data-urlencode "app_name=CI App" \
+            --data-urlencode "admin_name=CI Admin" --data-urlencode "admin_email=ci@example.com" \
+            --data-urlencode "admin_password=correct-horse-1" --data-urlencode "admin_password_confirm=correct-horse-1" \
+            http://127.0.0.1:8082/install)"
+          # CodeIgniter answers a redirect with 302, 303 (after a POST) or 307 (after a GET), depending on the HTTP version.
+          case "$code" in 302|303|307) ;; *) fail "installing returned HTTP $code instead of a redirect" ;; esac
+
+          dashboard="$(curl -s -c "$jar" -b "$jar" http://127.0.0.1:8082/dashboard)"
+          echo "$dashboard" | grep -q 'CI Admin' || fail "not signed in as the new administrator"
+          echo "$dashboard" | grep -q 'CI App' || fail "the application name was not saved"
+
+          code="$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" http://127.0.0.1:8082/install)"
+          case "$code" in 302|303|307) ;; *) fail "the installer is still open after installing (HTTP $code)" ;; esac
+
+          mysql -h127.0.0.1 -uroot -e 'SHOW TABLES' fresh_install | grep -qx 'users' || fail "the users table does not exist"
+          echo "OK: installer"
+          kill $SERVER_PID
+
   quality:
     runs-on: ubuntu-latest
 
