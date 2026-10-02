@@ -392,6 +392,11 @@ body.sidebar-open { overflow: hidden; }
 .admin-topbar .breadcrumb-item:not(.active) { display: none; } /* phones: only the current page */
 .admin-topbar .breadcrumb-item.active { overflow: hidden; text-overflow: ellipsis; padding-left: 0; font-weight: 600; color: var(--bs-body-color); }
 .admin-topbar .breadcrumb-item.active::before { display: none; }
+/* Navbar filled with the primary color (Settings -> Layout): keep everything readable on it. */
+.admin-topbar.navbar-filled .breadcrumb a { color: color-mix(in srgb, var(--app-primary-contrast) 75%, transparent); }
+.admin-topbar.navbar-filled .breadcrumb a:hover, .admin-topbar.navbar-filled .breadcrumb-item.active { color: var(--app-primary-contrast); }
+.admin-topbar.navbar-filled .topbar-btn, .admin-topbar.navbar-filled .topbar-user { color: var(--app-primary-contrast); }
+.admin-topbar.navbar-filled .topbar-btn:hover, .admin-topbar.navbar-filled .topbar-user:hover { background: rgba(255, 255, 255, .16); }
 .topbar-btn { display: inline-grid; place-items: center; width: 2.4rem; height: 2.4rem; padding: 0 !important; border-radius: var(--bs-border-radius); }
 .topbar-btn:hover { background: var(--bs-tertiary-bg); }
 .topbar-user { display: flex; align-items: center; gap: .55rem; padding: .25rem .4rem !important; border-radius: 999px; }
