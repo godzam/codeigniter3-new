@@ -11,6 +11,11 @@ $fluid = app_setting('layout_fluid');
 $filled = app_setting('layout_navbar') === 'primary';
 $render_items = static function (array $items) use (&$render_items) {
 	foreach ($items as $item) {
+		if (isset($item['section'])) {
+			echo '<li class="nav-section" role="presentation">'.htmlspecialchars($item['section'], ENT_QUOTES, 'UTF-8').'</li>';
+			continue;
+		}
+
 		$icon = '<i class="bi '.htmlspecialchars($item['icon'] ?? 'bi-dot', ENT_QUOTES, 'UTF-8').'"></i>';
 		$label = '<span class="nav-label">'.htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8').'</span>';
 
@@ -33,21 +38,33 @@ $render_items = static function (array $items) use (&$render_items) {
 	<?php $this->view('layouts/partials/head', ['page_title' => $page_title, 'extra_head' => $extra_head]) ?>
 </head>
 <body data-sidebar="<?php echo htmlspecialchars((string) app_setting('layout_sidebar'), ENT_QUOTES, 'UTF-8') ?>">
+<?php $me = current_user() ?>
 <div class="admin-shell d-flex">
 
 	<div class="sidebar-backdrop" data-sidebar-toggle aria-hidden="true"></div>
 
-	<aside class="admin-sidebar d-flex flex-column p-2" id="admin-sidebar">
-		<a class="d-flex align-items-center text-decoration-none text-body px-2 py-3 fs-5" href="<?php echo site_url('dashboard') ?>"><?php echo app_brand() ?></a>
-		<ul class="nav flex-column gap-1">
-			<?php $render_items(menu_items()) ?>
-		</ul>
+	<aside class="admin-sidebar" id="admin-sidebar" aria-label="Main navigation">
+		<div class="sb-brand">
+			<a class="brand-lockup" href="<?php echo site_url('dashboard') ?>"><?php echo brand_mark() ?><span class="brand-name"><?php echo htmlspecialchars((string) app_setting('app_name'), ENT_QUOTES, 'UTF-8') ?></span></a>
+		</div>
+		<nav class="sb-nav">
+			<ul class="nav flex-column">
+				<?php $render_items(menu_items()) ?>
+			</ul>
+		</nav>
+		<?php if ($me): ?>
+			<div class="sb-user">
+				<?php echo user_avatar($me['name'], '', 0) ?>
+				<div class="who"><strong><?php echo htmlspecialchars((string) $me['name'], ENT_QUOTES, 'UTF-8') ?></strong><span><?php echo htmlspecialchars(get_instance()->rbac->role_label($me['role']), ENT_QUOTES, 'UTF-8') ?></span></div>
+				<a class="btn btn-sm" href="<?php echo site_url('logout') ?>" title="Log out" aria-label="Log out"><i class="bi bi-box-arrow-right fs-6"></i></a>
+			</div>
+		<?php endif ?>
 	</aside>
 
-	<div class="flex-grow-1 d-flex flex-column min-vw-0" style="min-width:0">
-		<header class="navbar admin-topbar border-bottom px-2 px-sm-3 <?php echo $filled ? 'navbar-filled' : 'bg-body-tertiary' ?>">
+	<div class="flex-grow-1 d-flex flex-column" style="min-width:0">
+		<header class="navbar admin-topbar px-2 px-sm-3 <?php echo $filled ? 'navbar-filled' : '' ?>">
 			<div class="d-flex align-items-center gap-2 overflow-hidden" style="min-width:0">
-				<button class="btn btn-link nav-link d-lg-none px-1" type="button" data-sidebar-toggle aria-label="Toggle menu" aria-controls="admin-sidebar"><i class="bi bi-list fs-3"></i></button>
+				<button class="btn btn-link nav-link topbar-btn d-lg-none" type="button" data-sidebar-toggle aria-label="Toggle menu" aria-controls="admin-sidebar" aria-expanded="false"><i class="bi bi-list fs-3"></i></button>
 				<?php if ($breadcrumbs): ?>
 					<nav aria-label="breadcrumb">
 						<ol class="breadcrumb mb-0">
@@ -62,7 +79,7 @@ $render_items = static function (array $items) use (&$render_items) {
 					</nav>
 				<?php endif ?>
 			</div>
-			<div class="d-flex align-items-center gap-2 flex-shrink-0">
+			<div class="d-flex align-items-center gap-1 flex-shrink-0">
 				<?php echo theme_toggle() ?>
 				<?php $this->view('layouts/partials/user_menu') ?>
 			</div>
@@ -70,13 +87,18 @@ $render_items = static function (array $items) use (&$render_items) {
 
 		<main class="flex-grow-1 admin-main">
 			<div class="<?php echo $fluid ? '' : 'container-xxl px-0' ?>">
-				<?php if ($page_title !== ''): ?><h1 class="h3 mb-4"><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8') ?></h1><?php endif ?>
+				<?php if ($page_title !== ''): ?>
+					<div class="page-head">
+						<h1><?php echo htmlspecialchars($page_title, ENT_QUOTES, 'UTF-8') ?></h1>
+						<?php if ($page_subtitle !== ''): ?><p><?php echo htmlspecialchars($page_subtitle, ENT_QUOTES, 'UTF-8') ?></p><?php endif ?>
+					</div>
+				<?php endif ?>
 				<?php $this->view('layouts/partials/flash_inline') ?>
 				<?php echo $content ?>
 			</div>
 		</main>
 
-		<?php $this->view('layouts/partials/footer', ['fluid' => true]) ?>
+		<?php $this->view('layouts/partials/footer', ['fluid' => true, 'class' => 'admin-footer']) ?>
 	</div>
 </div>
 

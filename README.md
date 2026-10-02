@@ -18,6 +18,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 - [Template & theming](#template--theming)
 - [Authentication](#authentication)
 - [Roles & permissions](#roles--permissions)
+- [One-click installer](#one-click-installer)
 - [Cloudflare Turnstile](#cloudflare-turnstile)
 - [Error handling](#error-handling)
 - [CLI console (migrations & seeders)](#cli-console-migrations--seeders)
@@ -71,7 +72,11 @@ New to CodeIgniter? The [official CI3 user guide](https://codeigniter.com/usergu
    composer install
    ```
 
-2. **Set up your database** (skip this if you're just poking around — the homepage and `/example` module don't need one; auth, migrations, and `/health` do):
+2. **Set up the database** — the easy way, or by hand.
+
+   **The easy way:** run the app (step 3), open the home page and press **Install now**. One form creates the database if it does not exist, saves the connection in `application/config/database.php` if there is none (or it does not work), runs every migration, saves your application name, creates your **super admin** account and signs you in. In Laragon the defaults (server `localhost`, user `root`, empty password) work as they are. See [One-click installer](#one-click-installer).
+
+   **By hand** (also fine; skip it if you are just poking around — the homepage and `/example` module don't need a database; auth, migrations, and `/health` do):
    ```bash
    cp application/config/database.php.example application/config/database.php
    cp .env.example .env
@@ -225,6 +230,7 @@ array('label' => 'Users', 'icon' => 'bi-people', 'url' => 'users', 'role' => 'ad
 Log in as an admin and open **/admin/settings** (run `php index.php console migrate` first so the `settings` table exists). Out of the box:
 
 - **General** — application name, tagline, logo, footer text
+- **Login page** — headline, description, up to five highlights and an optional background image for the login / register screens
 - **Appearance** — primary and secondary color, default color mode (light / dark / auto), whether visitors get a light/dark switch, corner roundness, font
 - **Layout** — full-width content, compact sidebar, navbar filled with the primary color
 
@@ -239,6 +245,16 @@ $config['app_settings']['general']['fields']['support_email'] = array(
 ```
 
 Types: `text`, `textarea`, `color`, `select`, `switch`, `number`, `password` (stored as plain text — for third-party keys, not user passwords). Read a value anywhere with `$this->settings->get('support_email')` or `app_setting('support_email')` in a view. A module can register its own group with `$this->settings->register('blog', [...])`.
+
+### Look & feel
+
+The login and register pages are a split screen: a brand panel (colored from your primary color, or a photo you set under *Login page*) next to the form; on phones the panel becomes a header above the form. The admin has a sidebar with section headings, a tinted active item and a user card (it becomes an off-canvas drawer on phones), a sticky top bar with an avatar menu, and a dashboard with a greeting, real numbers, the last 14 days of sign-ups, recent users and shortcuts, all depending on what the signed-in role may see.
+
+- **Menu sections** — put `array('section' => 'Access')` in `application/config/menu.php` before the items it groups; a heading disappears when none of its items is visible to the user.
+- **Avatars and brand** — `user_avatar($name)` and `brand_mark()` (theme helper) print the initials avatar and the logo / first-letter tile.
+- **Page subtitle** — `$this->template->set_subtitle('...')` adds a line under the page title.
+- **Pills** — `<span class="pill pill-primary">` (also `-secondary`, `-danger`, `-success`, `-warning`) for soft status badges.
+- The font is Inter, served from `assets/vendor/inter/` (no external requests). Colors, radius and dark mode all follow *Settings → Appearance*.
 
 ### SweetAlert2
 
@@ -441,6 +457,20 @@ Things to know:
 - Choices read from another table load up to 500 rows into the dropdown.
 - Everything is validated on the server (`App\Crud\Definition`, `RecordValidator`, `Uploader`); the browser only helps.
 
+## One-click installer
+
+On a fresh checkout the home page shows a **Finish setting up** card with an **Install now** button (it leads to `/install`). The form asks for the application name and your administrator account (and, only when there is no working connection, the database server, user, password and name) and then, in one go:
+
+1. checks the server (PHP version, extensions, writable folders);
+2. creates the database if it is missing (needs a MySQL / MariaDB user that may create databases; `root` in Laragon can);
+3. saves the connection in `application/config/database.php` if there was no file or the connection did not work (the old file is kept as `database.php.bak`);
+4. runs every migration;
+5. saves the application name and creates your account as a **super admin** (the developer role), then signs you in and opens the dashboard.
+
+**It locks itself.** As soon as the application has a user, `/install` redirects away and the card disappears, so it cannot be used to reset or take over a running site. It also only works in the `development` / `testing` environments; on a server running `CI_ENV=production` it is a 404 unless you put `INSTALLER_ENABLED=true` in `.env` for the first install (remove it afterwards). If you prefer the command line, `php index.php console migrate` and `console seed` still do the same job.
+
+If the installer cannot write `application/config/database.php` (folder not writable) it shows the file's content so you can save it yourself.
+
 ## Cloudflare Turnstile
 
 A privacy-friendly CAPTCHA for the login and register forms. It is **off by default**; nothing changes until you turn it on.
@@ -553,6 +583,26 @@ docker compose exec app php index.php console seed
 > **Note:** the Docker setup follows the same patterns verified elsewhere in this README (env-var-driven config, the migrate/seed CLI, the smoke-tested routes) but wasn't run end-to-end in a container during development of this starter — there was no Docker runtime available in that environment. Sanity-check it (`docker compose up --build`, then hit `/health`) before relying on it for anything real, and please open an issue if something doesn't match.
 
 ## Troubleshooting
+
+**"No input file specified." (Laragon, XAMPP, shared hosting) or every page except `/` is a 404.**
+This is the classic CodeIgniter-on-CGI/FastCGI problem. The old rewrite rule sent requests to `index.php/login`; when PHP runs as CGI/FastCGI, Apache then hands PHP a script path that does not exist and PHP answers "No input file specified." The root `.htaccess` now rewrites to `index.php?/login`, which works with every PHP setup, so **update `.htaccess`** and reload Apache. If it still happens:
+- Make sure the virtual host's document root is the project folder (the one containing `index.php`), and that the folder allows overrides (`AllowOverride All`, which is Laragon's default) and `mod_rewrite` is on.
+- Living in a sub-folder (`http://localhost/my-project/`)? Uncomment `RewriteBase /my-project/` in `.htaccess`.
+- On **nginx** (Laragon can use it) `.htaccess` is ignored. Use:
+  ```nginx
+  location / { try_files $uri $uri/ /index.php?$query_string; }
+  location ~ \.php$ {
+      include fastcgi_params;
+      fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;   # a wrong path here is the other cause of "No input file specified"
+      fastcgi_pass 127.0.0.1:9000;
+  }
+  location ~ /\.(?!well-known) { deny all; }
+  location ~ ^/(application|system|vendor|tests-app|\.git)/ { deny all; }
+  ```
+  (`uploads/` should also refuse `.php`, see the note under the CRUD generator.)
+
+**Is my `.env` safe?**
+The root `.htaccess` now refuses requests for `.env`, `composer.json`/`composer.lock`, the `application/`, `system/`, `vendor/` and `tests-app/` folders and a few other files, instead of serving them as plain downloads. On nginx add the `deny` rules above; and ideally keep secrets out of the web root altogether in production.
 
 **I see a blank page or a 500 error.**
 Turn on PHP error display and check your PHP version (`php -v`) — this starter needs 8.1+. If you're on shared hosting, check its error log; `display_errors` is often off by default there.

@@ -237,7 +237,7 @@ if (!function_exists('theme_toggle')) {
         }
 
         $items = ['light' => ['bi-sun-fill', 'Light'], 'dark' => ['bi-moon-stars-fill', 'Dark'], 'auto' => ['bi-circle-half', 'Auto']];
-        $html = '<div class="dropdown '.$class.'"><button class="btn btn-link nav-link px-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Toggle color mode">'
+        $html = '<div class="dropdown '.$class.'"><button class="btn btn-link nav-link topbar-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Toggle color mode">'
             .'<i class="bi bi-circle-half theme-icon-active"></i></button><ul class="dropdown-menu dropdown-menu-end">';
 
         foreach ($items as $mode => [$icon, $label]) {
@@ -262,12 +262,21 @@ if (!function_exists('menu_items')) {
         $CI->config->load('menu', true, true);
         $items = $CI->config->item('menu', 'menu') ?: [];
         // Modules made with the CRUD generator (each already checked against the user's permissions).
-        $items = array_merge($items, $CI->crud_store->menu_entries());
+        $modules = $CI->crud_store->menu_entries();
+        if ($modules !== []) {
+            $items[] = ['section' => 'Modules'];
+            $items = array_merge($items, $modules);
+        }
         $current = trim($CI->uri->uri_string(), '/');
 
         $visible = static function (array $items) use (&$visible, $current) {
             $out = [];
             foreach ($items as $item) {
+                if (isset($item['section'])) {
+                    $out[] = $item;
+
+                    continue;
+                }
                 if (isset($item['role']) && !has_role($item['role'])) {
                     continue;
                 }
@@ -293,6 +302,70 @@ if (!function_exists('menu_items')) {
             return $out;
         };
 
-        return $visible($items);
+        // A section heading stays only if something visible follows it.
+        $items = $visible($items);
+        $clean = [];
+        foreach ($items as $i => $item) {
+            if (isset($item['section'])) {
+                $next = $items[$i + 1] ?? null;
+                if ($next === null || isset($next['section'])) {
+                    continue;
+                }
+            }
+            $clean[] = $item;
+        }
+
+        return $clean;
+    }
+}
+
+if (!function_exists('user_initials')) {
+    /**
+     * "Ada Lovelace" => "AL", "ada" => "A".
+     */
+    function user_initials($name)
+    {
+        $words = preg_split('/\s+/u', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $letters = '';
+        foreach (array_slice($words, 0, 2) as $word) {
+            $letters .= mb_strtoupper(mb_substr($word, 0, 1));
+        }
+
+        return $letters !== '' ? $letters : '?';
+    }
+}
+
+if (!function_exists('user_avatar')) {
+    /**
+     * A round initials avatar. The color varies per name (stable), unless
+     * $tone is given: 0 is the brand color.
+     *
+     * @param string   $class extra CSS classes, e.g. 'avatar-sm'
+     * @param int|null $tone  0-5
+     */
+    function user_avatar($name, $class = '', $tone = null)
+    {
+        $tone = $tone ?? (crc32(mb_strtolower((string) $name)) % 6);
+
+        return '<span class="avatar '.htmlspecialchars($class, ENT_QUOTES, 'UTF-8').'" data-tone="'.(int) $tone.'" aria-hidden="true">'
+            .htmlspecialchars(user_initials($name), ENT_QUOTES, 'UTF-8').'</span>';
+    }
+}
+
+if (!function_exists('brand_mark')) {
+    /**
+     * The logo from Settings, or the app name's first letter on a gradient tile.
+     */
+    function brand_mark()
+    {
+        $logo = trim((string) app_setting('app_logo'));
+
+        if ($logo !== '') {
+            $src = preg_match('#^(https?:)?//#', $logo) ? $logo : base_url($logo);
+
+            return '<span class="brand-mark"><img src="'.htmlspecialchars($src, ENT_QUOTES, 'UTF-8').'" alt=""></span>';
+        }
+
+        return '<span class="brand-mark" aria-hidden="true">'.htmlspecialchars(mb_strtoupper(mb_substr((string) app_setting('app_name'), 0, 1)), ENT_QUOTES, 'UTF-8').'</span>';
     }
 }

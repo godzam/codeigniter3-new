@@ -4,6 +4,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
  * @property Template $template
+ * @property Installer $installer
  */
 class Welcome extends CI_Controller
 {
@@ -24,6 +25,15 @@ class Welcome extends CI_Controller
      */
     public function index()
     {
-        $this->template->render('welcome_message', [], 'public');
+        // Until the app has a user (and only where the installer is allowed) the
+        // page offers the one-click setup. A signed-in visitor is proof enough
+        // that it is installed, so they skip the check.
+        $setup = null;
+        $this->load->library('installer');
+        if (!is_logged_in() && $this->installer->enabled() && !$this->installer->installed()) {
+            $setup = $this->installer->status();
+        }
+
+        $this->template->render('welcome_message', ['setup' => $setup], 'public');
     }
 }

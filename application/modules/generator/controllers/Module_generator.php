@@ -44,6 +44,7 @@ class Module_generator extends MX_Controller
     {
         $this->template
             ->set_title('Generator')
+            ->set_subtitle('Define a table and its fields; get a list, an add/edit dialog, delete, permissions and a menu entry.')
             ->set_breadcrumbs(['Home' => '', 'Generator' => null])
             ->add_foot('<script src="'.asset_url('js/generator.js').'"></script>')
             ->render('index', [], 'admin');

@@ -35,6 +35,7 @@ class Users extends MX_Controller
     {
         $this->template
             ->set_title('Users')
+            ->set_subtitle('Everyone who can sign in, and the role each person has.')
             ->set_breadcrumbs(['Home' => '', 'Users' => null])
             ->render('index', ['can_assign' => can('users.assign_role')], 'admin');
     }
@@ -72,7 +73,9 @@ class Users extends MX_Controller
                 // Only a super admin can change a super admin's role, or their own.
                 $locked = !$viewerIsSuper && ($isSuper || (int) $u['id'] === $myId);
 
-                $name = $e($u['name']).((int) $u['id'] === $myId ? ' <span class="badge text-bg-secondary ms-1">you</span>' : '');
+                $name = '<div class="cell-person">'.user_avatar($u['name'])
+                    .'<div class="text-truncate"><strong>'.$e($u['name']).'</strong>'
+                    .((int) $u['id'] === $myId ? ' <span class="pill pill-primary ms-1">you</span>' : '').'</div></div>';
 
                 if ($canAssign && !$locked) {
                     $options = '';
@@ -87,7 +90,7 @@ class Users extends MX_Controller
                         .'<button type="submit" class="btn btn-sm btn-outline-primary">Save</button>'
                         .form_close();
                 } else {
-                    $role = '<span class="badge text-bg-'.($isSuper ? 'danger' : 'secondary').'">'.$e($names[$u['role']] ?? $u['role']).'</span>'
+                    $role = '<span class="pill '.($isSuper ? 'pill-danger' : 'pill-secondary').'">'.$e($names[$u['role']] ?? $u['role']).'</span>'
                         .($canAssign && $locked ? ' <i class="bi bi-lock-fill text-body-secondary ms-1" title="You cannot change this role"></i>' : '');
                 }
 
