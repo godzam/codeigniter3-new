@@ -60,6 +60,23 @@ $config['permissions'] = array(
 		),
 	),
 
+	'security' => array(
+		'label' => 'Login security',
+		'icon' => 'bi-shield-exclamation',
+		'permissions' => array(
+			'view' => 'See blocked IP addresses and users',
+			'unblock' => 'Unblock IP addresses and users',
+		),
+	),
+
+	'audit' => array(
+		'label' => 'Audit log',
+		'icon' => 'bi-clock-history',
+		'permissions' => array(
+			'view' => 'See the audit log (who changed what)',
+		),
+	),
+
 );
 
 /*

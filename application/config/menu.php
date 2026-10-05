@@ -34,5 +34,7 @@ $config['menu'] = array(
 	array('label' => 'Roles', 'icon' => 'bi-shield-lock', 'url' => 'admin/roles', 'permission' => 'roles.view'),
 	array('section' => 'System'),
 	array('label' => 'Settings', 'icon' => 'bi-gear', 'url' => 'admin/settings', 'permission' => 'settings.manage'),
+	array('label' => 'Login security', 'icon' => 'bi-shield-exclamation', 'url' => 'admin/security', 'permission' => 'security.view'),
+	array('label' => 'Audit log', 'icon' => 'bi-clock-history', 'url' => 'admin/audit', 'permission' => 'audit.view'),
 	array('label' => 'Generator', 'icon' => 'bi-magic', 'url' => 'admin/generator', 'super_admin' => true),
 );

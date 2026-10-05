@@ -260,6 +260,14 @@ class Crud_store
 
     /**
      * @param array<string, mixed> $module
+     */
+    public function count_records(array $module)
+    {
+        return (int) $this->db()->count_all($module['table']);
+    }
+
+    /**
+     * @param array<string, mixed> $module
      * @param array<string, mixed> $values
      */
     public function insert_record(array $module, array $values)

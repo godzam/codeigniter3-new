@@ -20,6 +20,7 @@ use App\Install\Requirements;
  * @property CI_DB_query_builder $db
  * @property CI_Loader $load
  * @property CI_Migration $migration
+ * @property Audit $audit
  */
 class Installer
 {
@@ -209,11 +210,13 @@ class Installer
             ]);
             $steps[] = 'Created the administrator account';
 
-            return [
-                'ok' => true,
-                'steps' => $steps,
-                'user' => ['id' => (int) $connection->insert_id(), 'name' => $v['admin_name'], 'email' => $v['admin_email'], 'role' => 'super_admin'],
-            ];
+            $user = ['id' => (int) $connection->insert_id(), 'name' => $v['admin_name'], 'email' => $v['admin_email'], 'role' => 'super_admin'];
+
+            // The very first entries of the audit log: the account, and the installation itself.
+            $this->CI->audit->created('users', $user['id'], $user['name'].' ('.$user['email'].')', ['name' => $user['name'], 'email' => $user['email'], 'role' => $user['role']], [], $user);
+            $this->CI->audit->event('install', 'installer', null, $v['app_name'], ['steps' => implode('; ', $steps)], $user);
+
+            return ['ok' => true, 'steps' => $steps, 'user' => $user];
         } catch (\Throwable $e) {
             log_message('error', 'Installer failed: '.get_class($e).': '.$e->getMessage());
 

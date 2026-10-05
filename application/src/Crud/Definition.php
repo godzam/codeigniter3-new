@@ -15,7 +15,7 @@ final class Definition
 {
     public const RESERVED_SLUGS = [
         'users', 'roles', 'settings', 'generator', 'dashboard', 'auth', 'login', 'logout', 'register',
-        'admin', 'crud', 'example', 'console', 'health', 'welcome', 'api', 'assets', 'uploads', 'system',
+        'admin', 'crud', 'security', 'audit', 'example', 'console', 'health', 'welcome', 'api', 'assets', 'uploads', 'system',
     ];
 
     public const RESERVED_TABLES = [

@@ -24,11 +24,21 @@
 		});
 		var search = el.getAttribute('data-search') !== '0';
 
+		// data-filters="#box": inputs inside it are sent with every request and reload the table when changed.
+		var filterBox = el.getAttribute('data-filters') ? document.querySelector(el.getAttribute('data-filters')) : null;
+
 		var table = new DataTable(el, {
 			serverSide: true,
 			processing: true,
 			responsive: true,
-			ajax: { url: el.getAttribute('data-url'), type: 'GET' },
+			ajax: {
+				url: el.getAttribute('data-url'),
+				type: 'GET',
+				data: function (d) {
+					if (!filterBox) { return; }
+					filterBox.querySelectorAll('[name]').forEach(function (f) { d[f.name] = f.value; });
+				}
+			},
 			columns: columns,
 			order: order.length === 2 ? [[parseInt(order[0], 10), order[1]]] : [],
 			pageLength: parseInt(el.getAttribute('data-page-length'), 10) || 10,
@@ -54,6 +64,10 @@
 				infoFiltered: '(filtered from _MAX_)'
 			}
 		});
+
+		if (filterBox) {
+			filterBox.addEventListener('change', function () { table.ajax.reload(); });
+		}
 
 		table.on('dt-error', function () {
 			if (window.App) { window.App.toast('error', 'Could not load the table. Reload the page and try again.'); }

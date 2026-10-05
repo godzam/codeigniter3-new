@@ -23,6 +23,7 @@ use App\Auth\RoleRules;
  * @property Template $template
  * @property Rbac $rbac
  * @property Datatable $datatable
+ * @property Audit $audit
  * @property CI_Input $input
  */
 class Roles extends MX_Controller
@@ -168,7 +169,10 @@ class Roles extends MX_Controller
             redirect('admin/roles');
         }
 
+        $before = $this->role_snapshot($role, $this->rbac->permissions_of($role['slug']));
+
         $this->rbac->delete_role($role['slug']);
+        $this->audit->deleted('roles', $role['slug'], $role['name'].' ('.$role['slug'].')', $before);
         flash('success', sprintf('Role "%s" deleted.', $role['name']));
         redirect('admin/roles');
     }
@@ -202,6 +206,10 @@ class Roles extends MX_Controller
             redirect('admin/roles');
         }
 
+        $this->audit->created('roles', $slug, $name.' ('.$slug.')', $this->role_snapshot(
+            ['slug' => $slug, 'name' => $name, 'description' => $description, 'is_default' => $makeDefault],
+            $permissions
+        ));
         flash('success', sprintf('Role "%s" created.', $name));
         redirect('admin/roles');
     }
@@ -232,13 +240,39 @@ class Roles extends MX_Controller
             return;
         }
 
+        $before = $this->role_snapshot($role, $old);
+
         if (!$this->rbac->update_role($role['slug'], $name, $description, $permissions, $makeDefault)) {
             flash('error', 'The role could not be saved.');
             redirect('admin/roles');
         }
 
+        $this->audit->updated('roles', $role['slug'], $name.' ('.$role['slug'].')', $before, $this->role_snapshot(
+            ['slug' => $role['slug'], 'name' => $name, 'description' => $description, 'is_default' => $makeDefault || !empty($role['is_default'])],
+            $permissions
+        ));
+
         flash('success', sprintf('Role "%s" saved.', $name));
         redirect('admin/roles');
+    }
+
+    /**
+     * A role as the audit log records it.
+     *
+     * @param array<string, mixed> $role
+     * @param array<int, string>   $permissions
+     *
+     * @return array<string, mixed>
+     */
+    protected function role_snapshot(array $role, array $permissions)
+    {
+        return [
+            'slug' => $role['slug'],
+            'name' => $role['name'],
+            'description' => (string) ($role['description'] ?? ''),
+            'is_default' => (int) !empty($role['is_default']),
+            'permissions' => array_values($permissions),
+        ];
     }
 
     /**

@@ -44,6 +44,10 @@ if (!function_exists('datatable_table')) {
      *   'page_length' => int                         default 10
      *   'empty'     => string                        text for an empty table
      *   'search'    => bool                          show the search box (default true)
+     *   'filters'   => string                        CSS selector of a box with filter inputs (<select>, <input>).
+     *                                                Their name=value pairs are sent with every request (read them
+     *                                                in the data() method with $this->input->get()), and changing
+     *                                                one reloads the table.
      *
      * @param string $id      unique DOM id
      * @param string $url     JSON endpoint (a controller method calling Datatable::respond)
@@ -69,6 +73,9 @@ if (!function_exists('datatable_table')) {
             'data-search' => !array_key_exists('search', $options) || $options['search'] ? '1' : '0',
             'data-empty' => (string) ($options['empty'] ?? 'Nothing to show yet.'),
         ];
+        if (!empty($options['filters'])) {
+            $attrs['data-filters'] = (string) $options['filters'];
+        }
         if (isset($options['order'])) {
             $attrs['data-order'] = (int) $options['order'][0].','.(strtolower((string) ($options['order'][1] ?? 'asc')) === 'desc' ? 'desc' : 'asc');
         }
