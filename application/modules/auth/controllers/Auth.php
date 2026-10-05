@@ -6,7 +6,10 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * Minimal email/password auth. Each user has one role (users.role); what a
  * role may do is managed on the Roles page (see application/libraries/Rbac.php
  * and can()/require_permission() in application/helpers/auth_helper.php).
- * Login attempts are throttled per-IP via Ratelimiter.
+ * Wrong passwords block the IP address and the account (Loginguard: 5 wrong =
+ * 1 hour, the 3rd block in a row = 1 day); sign-ins, sign-outs, blocks and
+ * registrations are written to the audit log. Where the security tables are
+ * missing (migrations not run) it falls back to a plain per-minute limit.
  *
  * Routes (see application/modules/auth/config/routes.php):
  *   GET|POST /login
@@ -16,6 +19,8 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * @property User_model $user_model
  * @property CI_Form_validation $form_validation
  * @property Ratelimiter $ratelimiter
+ * @property Loginguard $loginguard
+ * @property Audit $audit
  * @property CI_Session $session
  * @property Template $template
  * @property Turnstile $turnstile
@@ -27,7 +32,7 @@ class Auth extends MX_Controller
     {
         parent::__construct();
         $this->load->model('user_model');
-        $this->load->library(['form_validation', 'ratelimiter', 'session']);
+        $this->load->library(['form_validation', 'ratelimiter', 'session', 'loginguard']);
         $this->load->helper(['form', 'url']);
     }
 
@@ -63,25 +68,51 @@ class Auth extends MX_Controller
             return;
         }
 
-        $rate_key = 'login:'.$this->input->ip_address();
-
-        if (!$this->ratelimiter->attempt($rate_key, 5, 60)) {
-            $retry_after = $this->ratelimiter->retry_after($rate_key);
-            $this->show('login', 'Log in', ['error' => "Too many attempts. Try again in {$retry_after}s."]);
-
-            return;
-        }
-
         $user = $this->user_model->find_by_email($this->input->post('email'));
+        $guard = $this->loginguard;
+
+        if ($guard->available()) {
+            // Blocked (this IP address, or this account): say so without even looking at the password.
+            $left = $guard->seconds_blocked($user ? (int) $user->id : null);
+            if ($left > 0) {
+                $this->show('login', 'Log in', ['error' => $this->blocked_message($left)]);
+
+                return;
+            }
+        } else {
+            $rate_key = 'login:'.$this->input->ip_address();
+            if (!$this->ratelimiter->attempt($rate_key, 5, 60)) {
+                $retry_after = $this->ratelimiter->retry_after($rate_key);
+                $this->show('login', 'Log in', ['error' => "Too many attempts. Try again in {$retry_after}s."]);
+
+                return;
+            }
+        }
 
         if (!$user || !password_verify((string) $this->input->post('password'), $user->password)) {
-            $this->show('login', 'Log in', ['error' => 'Invalid email or password.']);
+            $result = $guard->failure($user ? (int) $user->id : null);
+
+            if ($result['locked']) {
+                $message = $this->blocked_message($result['seconds']);
+            } elseif ($guard->available() && $result['attempts_left'] <= 3 && $result['attempts_left'] > 0) {
+                $message = 'Invalid email or password. '.$result['attempts_left'].' attempt'.($result['attempts_left'] === 1 ? '' : 's').' left before a temporary block.';
+            } else {
+                $message = 'Invalid email or password.';
+            }
+
+            $this->show('login', 'Log in', ['error' => $message]);
 
             return;
         }
 
-        $this->ratelimiter->reset($rate_key);
+        if ($guard->available()) {
+            $guard->success((int) $user->id);
+        } else {
+            $this->ratelimiter->reset('login:'.$this->input->ip_address());
+        }
+
         $this->log_in_as($user);
+        $this->audit->event('login', 'auth', $user->id, $user->name.' ('.$user->email.')');
 
         $redirect = $this->session->flashdata('redirect_after_login');
         redirect($redirect ?: 'dashboard');
@@ -127,12 +158,19 @@ class Auth extends MX_Controller
             'role' => $this->rbac->default_role_slug(), // set on the Roles page
         ]);
 
-        $this->log_in_as($this->user_model->find($user_id));
+        $created = $this->user_model->find($user_id);
+        $this->log_in_as($created);
+        $this->audit->created('users', $user_id, $created->name.' ('.$created->email.')', $created);
         redirect('dashboard');
     }
 
     public function logout()
     {
+        if (is_logged_in()) {
+            $me = current_user();
+            $this->audit->event('logout', 'auth', $me['id'], $me['name'].' ('.$me['email'].')');
+        }
+
         $this->session->sess_destroy();
         redirect('login');
     }
@@ -145,6 +183,14 @@ class Auth extends MX_Controller
     protected function show($view, $title, array $data = [])
     {
         $this->template->set_title($title)->render($view, $data, 'auth');
+    }
+
+    /**
+     * What the visitor reads when they are (or just became) blocked.
+     */
+    protected function blocked_message($seconds)
+    {
+        return 'Too many failed login attempts. Please try again in about '.$this->loginguard->human($seconds).'.';
     }
 
     protected function log_in_as($user)

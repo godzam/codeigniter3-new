@@ -11,6 +11,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
  *   POST     /admin/settings/reset
  *
  * @property Template $template
+ * @property Audit $audit
  * @property Settings $settings
  * @property CI_Input $input
  */
@@ -47,11 +48,14 @@ class Admin_settings extends MX_Controller
             return;
         }
 
+        $before = $this->settings->all();
+
         if (!$this->settings->save($result['values'])) {
             flash('error', 'Settings could not be saved. Run the migrations first: php index.php console migrate');
             redirect('admin/settings');
         }
 
+        $this->audit->updated('settings', 'app', 'Application settings', $before, $this->settings->all());
         flash('success', 'Settings saved.');
         redirect('admin/settings');
     }
@@ -62,7 +66,11 @@ class Admin_settings extends MX_Controller
             show_404();
         }
 
+        $before = $this->settings->all();
         $ok = $this->settings->reset();
+        if ($ok) {
+            $this->audit->updated('settings', 'app', 'Application settings (reset to defaults)', $before, $this->settings->all());
+        }
         flash($ok ? 'success' : 'error', $ok ? 'Settings reset to their defaults.' : 'Settings could not be reset.');
         redirect('admin/settings');
     }

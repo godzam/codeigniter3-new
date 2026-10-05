@@ -22,6 +22,7 @@ use App\Crud\FieldTypes;
  * @property Template $template
  * @property Crud_store $crud_store
  * @property Crud_rules $crud_rules
+ * @property Audit $audit
  * @property Datatable $datatable
  * @property CI_Input $input
  */
@@ -130,7 +131,10 @@ class Module_generator extends MX_Controller
             redirect('admin/generator');
         }
 
+        $before = $this->audit_view($module) + ['records_deleted' => $this->crud_store->count_records($module)];
+
         $this->crud_store->delete_module($module);
+        $this->audit->deleted('generator', $module['slug'], $module['title'], $before);
         flash('success', 'Module "'.$module['title'].'" and its table were deleted.');
         redirect('admin/generator');
     }
@@ -170,10 +174,34 @@ class Module_generator extends MX_Controller
         }
 
         $slug = $result['definition']['slug'];
+        $label = $result['definition']['title'];
+        if ($module === null) {
+            $this->audit->created('generator', $slug, $label, $this->audit_view($result['definition']));
+        } else {
+            $this->audit->updated('generator', $slug, $label, $this->audit_view($module), $this->audit_view($result['definition']));
+        }
         flash('success', $module === null
             ? 'Module created. The admin role can use it; give other roles access on the Roles page.'
             : 'Module saved.');
         redirect('admin/c/'.$slug);
+    }
+
+    /**
+     * A module definition as the audit log records it: fields keyed by their
+     * column name, so a change reads "fields.price.label" instead of "fields.3.label".
+     *
+     * @param array<string, mixed> $module
+     *
+     * @return array<string, mixed>
+     */
+    protected function audit_view(array $module)
+    {
+        $fields = [];
+        foreach ($module['fields'] as $field) {
+            $fields[$field['name']] = $field;
+        }
+
+        return ['slug' => $module['slug'], 'table' => $module['table'], 'title' => $module['title'], 'icon' => $module['icon'], 'fields' => $fields];
     }
 
     /**

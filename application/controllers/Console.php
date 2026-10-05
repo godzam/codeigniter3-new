@@ -16,6 +16,8 @@ defined('BASEPATH') or exit('No direct script access allowed');
  *
  * @property CI_Migration $migration
  * @property Seeder $seeder
+ * @property Loginguard $loginguard
+ * @property Audit $audit
  */
 class Console extends CI_Controller
 {
@@ -54,5 +56,50 @@ class Console extends CI_Controller
 
         $count = $this->seeder->run_all();
         echo "Ran {$count} seeder(s).".PHP_EOL;
+    }
+
+    /**
+     * Lifts a login block from the command line, e.g. when the only admin
+     * is locked out:
+     *
+     *   php index.php console unblock 203.0.113.5
+     *   php index.php console unblock admin@example.com
+     *   php index.php console unblock all
+     */
+    public function unblock($who = null)
+    {
+        $this->load->library('loginguard');
+
+        if ($who === null || $who === '') {
+            echo 'Usage: php index.php console unblock <ip address | email | all>'.PHP_EOL;
+
+            return;
+        }
+
+        if (!$this->loginguard->available()) {
+            echo 'The login security tables do not exist. Run: php index.php console migrate'.PHP_EOL;
+
+            return;
+        }
+
+        if ($who === 'all') {
+            $this->load->database();
+            $this->db->empty_table('login_locks');
+            $this->audit->event('login.unblocked', 'security', null, 'Every IP address and user (console)');
+            echo 'All blocks lifted.'.PHP_EOL;
+
+            return;
+        }
+
+        $done = $this->loginguard->unblock_who($who);
+
+        if ($done === null) {
+            echo "Nothing is blocked for {$who}.".PHP_EOL;
+
+            return;
+        }
+
+        $this->audit->event('login.unblocked', 'security', $done['type'].':'.$done['subject'], $done['label'].' (console)');
+        echo $done['label'].' can sign in again.'.PHP_EOL;
     }
 }

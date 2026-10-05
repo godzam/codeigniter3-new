@@ -23,6 +23,7 @@ use App\Crud\Uploader;
  * @property Template $template
  * @property Crud_store $crud_store
  * @property Crud_rules $crud_rules
+ * @property Audit $audit
  * @property Datatable $datatable
  * @property CI_Input $input
  * @property CI_Output $output
@@ -238,12 +239,15 @@ class Crud extends MX_Controller
         }
 
         if ($existing === null) {
-            $store->insert_record($module, $values);
+            $newId = $store->insert_record($module, $values);
+            $row = ['id' => $newId] + $values;
+            $this->audit->created($module['slug'], $newId, $this->record_label($module, $row), $this->audit_row($row), $this->secret_fields($module));
         } else {
             $store->update_record($module, $id, $values);
             foreach ($uploads as $name => $change) {
                 $uploader->delete((string) ($existing[$name] ?? ''));
             }
+            $this->audit->updated($module['slug'], $id, $this->record_label($module, $values + $existing), $this->audit_row($existing), $this->audit_row($values + $existing), $this->secret_fields($module));
         }
 
         $this->json(['ok' => true, 'message' => $existing === null ? 'Record added.' : 'Record saved.']);
@@ -264,6 +268,7 @@ class Crud extends MX_Controller
         }
 
         $this->crud_store->delete_record($module, $id);
+        $this->audit->deleted($module['slug'], $id, $this->record_label($module, $row), $this->audit_row($row), $this->secret_fields($module));
 
         $uploader = $this->crud_store->uploader();
         foreach ($module['fields'] as $f) {
@@ -273,6 +278,52 @@ class Crud extends MX_Controller
         }
 
         $this->json(['ok' => true, 'message' => 'Record deleted.']);
+    }
+
+    /**
+     * A record without the timestamps, which only add noise to the audit log.
+     *
+     * @param array<string, mixed> $row
+     *
+     * @return array<string, mixed>
+     */
+    protected function audit_row(array $row)
+    {
+        unset($row['created_at'], $row['updated_at']);
+
+        return $row;
+    }
+
+    /**
+     * Columns that hold a secret (password fields): their values are never logged.
+     *
+     * @param array<string, mixed> $module
+     *
+     * @return array<int, string>
+     */
+    protected function secret_fields(array $module)
+    {
+        return array_column(array_filter($module['fields'], static function ($f) {
+            return $f['type'] === FieldTypes::PASSWORD;
+        }), 'name');
+    }
+
+    /**
+     * What the audit log calls a record: its first listed text value, or "Title #id".
+     *
+     * @param array<string, mixed> $module
+     * @param array<string, mixed> $row
+     */
+    protected function record_label(array $module, array $row)
+    {
+        foreach ($module['fields'] as $f) {
+            if (!empty($f['list']) && in_array($f['type'], [FieldTypes::TEXT, FieldTypes::EMAIL, FieldTypes::TEXTAREA, FieldTypes::NUMBER, FieldTypes::DATE], true)
+                && isset($row[$f['name']]) && trim((string) $row[$f['name']]) !== '') {
+                return mb_strimwidth(trim((string) $row[$f['name']]), 0, 80, '…');
+            }
+        }
+
+        return $module['title'].' #'.($row['id'] ?? '');
     }
 
     /**

@@ -20,6 +20,7 @@ use App\Auth\RoleRules;
  * @property Template $template
  * @property Rbac $rbac
  * @property Datatable $datatable
+ * @property Audit $audit
  * @property CI_Input $input
  */
 class Users extends MX_Controller
@@ -138,6 +139,7 @@ class Users extends MX_Controller
 
         if ($newRole !== $user['role']) {
             $this->rbac->assign_role((int) $user['id'], $newRole);
+            $this->audit->updated('users', $user['id'], $user['name'].' ('.$user['email'].')', ['role' => $user['role']], ['role' => $newRole]);
             flash('success', sprintf('%s is now %s.', $user['name'], $roles[$newRole]['name']));
         }
 
