@@ -18,6 +18,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 - [Template & theming](#template--theming)
 - [Authentication](#authentication)
 - [Roles & permissions](#roles--permissions)
+- [Login security & audit log](#login-security--audit-log)
 - [One-click installer](#one-click-installer)
 - [Cloudflare Turnstile](#cloudflare-turnstile)
 - [Error handling](#error-handling)
@@ -293,7 +294,7 @@ Bootstrap, Bootstrap Icons, and SweetAlert2 are vendored in `assets/vendor/` (no
 
 - `GET`/`POST /register`, `GET`/`POST /login`, `GET /logout` (short URLs — see `application/config/routes.php`)
 - Passwords hashed with `password_hash()`/`password_verify()`
-- Login attempts throttled at 5 per 60 seconds per IP (`application/libraries/Ratelimiter.php`)
+- Wrong passwords are counted per IP address and per account and lead to a temporary block (see [Login security & audit log](#login-security--audit-log)); if the security tables are missing it falls back to 5 attempts per 60 seconds per IP (`application/libraries/Ratelimiter.php`)
 - A single `role` column on `users` (seeded default: `user`; the seeded admin gets `admin`) for basic access control
 
 Use it from any controller via `application/helpers/auth_helper.php` (autoloaded — no `$this->load->helper()` needed):
@@ -457,6 +458,33 @@ Things to know:
 - Choices read from another table load up to 500 rows into the dropdown.
 - Everything is validated on the server (`App\Crud\Definition`, `RecordValidator`, `Uploader`); the browser only helps.
 
+## Login security & audit log
+
+Run `php index.php console migrate` (the installer does it for you) to create the `login_locks` and `audit_logs` tables. Both features switch themselves off quietly while the tables are missing.
+
+### Login blocking
+
+- **5 wrong passwords** block the IP address *and* the account for **1 hour** — even the right password is refused during the block.
+- Getting blocked **3 times in a row** blocks it for **1 day**. A good sign-in resets the account's counters; the "in a row" streak is forgotten after 7 days without a block.
+- Unknown e-mail addresses are never stored, so attackers can't fill the table, and the messages never say whether an e-mail exists.
+- The numbers are editable under **Settings → Security** (`lock_max_attempts`, `lock_minutes`, `lock_strikes`, `lock_long_hours`).
+- Admins with the `security.unblock` permission lift a block at **Admin → Login security**, per IP or per account. Locked out completely? `php index.php console unblock 203.0.113.5`, `... unblock admin@example.com` or `... unblock all`.
+
+### Audit log
+
+**Admin → Audit log** (permission `audit.view`, read-only) lists who did what, when and from which IP, with filters for action, entity and dates; *Details* shows the content: everything on an add, before → after on an edit, everything that was removed on a delete. Passwords, tokens, secrets and API keys are shown as `[hidden]`.
+
+Already logged: users (role changes, sign-up), roles, settings, generator modules, every record of a generated CRUD module, sign-in/sign-out, blocks and unblocks, and the installation. Log your own actions from any controller (the `Audit` library is autoloaded):
+
+```php
+$this->audit->created('posts', $id, $title, $values);               // everything that was added
+$this->audit->updated('posts', $id, $title, $before, $after);       // only the differences; nothing is written if there are none
+$this->audit->deleted('posts', $id, $title, $row);                  // what was removed
+$this->audit->event('export', 'posts', null, 'Monthly report');     // anything else
+```
+
+Values are shortened (500 characters each, ~60 KB per entry) and keys that look like secrets are hidden; pass extra column names as the last argument to hide more. The table grows forever — delete old rows with your own scheduled query if you need a retention period.
+
 ## One-click installer
 
 On a fresh checkout the home page shows a **Finish setting up** card with an **Install now** button (it leads to `/install`). The form asks for the application name and your administrator account (and, only when there is no working connection, the database server, user, password and name) and then, in one go:
@@ -540,6 +568,7 @@ CodeIgniter 3 has no built-in artisan-like CLI. `application/controllers/Console
 php index.php console migrate          # run pending migrations
 php index.php console seed             # run every application/seeds/*_seeder.php
 php index.php console seed users       # run one seeder by name
+php index.php console unblock <ip|email|all>   # lift a login block (see Login security)
 ```
 
 Add a migration with CI3's normal `CI_Migration` API in `application/migrations/`. Add a seeder by creating `application/seeds/<name>_seeder.php` with a class extending `CI_Seeder` and implementing `run()` — see `application/seeds/users_seeder.php`.

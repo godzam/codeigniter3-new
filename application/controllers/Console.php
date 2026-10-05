@@ -18,6 +18,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * @property Seeder $seeder
  * @property Loginguard $loginguard
  * @property Audit $audit
+ * @property CI_DB_query_builder $db
  */
 class Console extends CI_Controller
 {
