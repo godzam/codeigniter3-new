@@ -229,6 +229,14 @@ $config['app_settings'] = array(
 				'min' => 1,
 				'max' => 720,
 			),
+			'audit_retention_days' => array(
+				'label' => 'Keep the audit log for (days)',
+				'type' => 'number',
+				'default' => 0,
+				'min' => 0,
+				'max' => 3650,
+				'help' => '0 keeps it forever. Older entries are deleted by the scheduled command php index.php console prune (see the README); nothing is deleted without it.',
+			),
 		),
 	),
 

@@ -78,6 +78,7 @@ class Rbac
                         'create' => 'Add '.$title.' records',
                         'edit' => 'Edit '.$title.' records',
                         'delete' => 'Delete '.$title.' records',
+                        'export' => 'Download '.$title.' as CSV, Excel or PDF (when the module offers it)',
                     ],
                 ]);
             }

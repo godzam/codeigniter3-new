@@ -29,6 +29,14 @@ class Logger
     public function __construct()
     {
         $this->monolog = new MonologLogger('app');
+        // LOG_CHANNEL=stderr sends everything to the process's error output (for containers and
+        // several servers, where the platform collects it); otherwise it goes to application/logs/app.log.
+        if (strtolower((string) getenv('LOG_CHANNEL')) === 'stderr') {
+            $this->monolog->pushHandler(new StreamHandler('php://stderr', Level::Debug));
+
+            return;
+        }
+
         $this->monolog->pushHandler(new StreamHandler(APPPATH.'logs/app.log', Level::Debug));
 
         if (is_cli()) {

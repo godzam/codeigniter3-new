@@ -239,7 +239,7 @@ class Crud_store
     {
         return array_map(static function ($action) use ($slug) {
             return $slug.'.'.$action;
-        }, ['view', 'create', 'edit', 'delete']);
+        }, ['view', 'create', 'edit', 'delete', 'export']);
     }
 
     // ------------------------------------------------------------------

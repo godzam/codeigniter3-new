@@ -23,6 +23,9 @@ final class Definition
     ];
 
     public const MAX_FIELDS = 40;
+
+    /** Download formats a module can offer (see App\Export\Exporter). */
+    public const EXPORT_FORMATS = ['csv', 'pdf', 'xlsx'];
     public const MAX_OPTIONS = 100;
 
     /**
@@ -69,6 +72,15 @@ final class Definition
         if (!preg_match('/^bi-[a-z0-9-]{1,60}$/', $icon)) {
             $errors['icon'] = 'Icon must be a Bootstrap Icons class such as bi-box-seam.';
         }
+
+        // Which download formats the list offers (none by default). Unknown ones are dropped.
+        $export = [];
+        foreach (isset($input['export']) && is_array($input['export']) ? $input['export'] : [] as $format) {
+            if (is_string($format) && in_array($format, self::EXPORT_FORMATS, true) && !in_array($format, $export, true)) {
+                $export[] = $format;
+            }
+        }
+        sort($export);
 
         // ---- Fields ------------------------------------------------------
         $rawFields = isset($input['fields']) && is_array($input['fields']) ? array_values($input['fields']) : [];
@@ -122,6 +134,7 @@ final class Definition
                 'table' => $table,
                 'title' => $title,
                 'icon' => $icon,
+                'export' => $export,
                 'fields' => $fields,
             ],
             'errors' => [],

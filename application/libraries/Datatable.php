@@ -45,9 +45,25 @@ class Datatable
     /** @var array<int, string> fallback ORDER BY, e.g. ['u.id ASC'] */
     protected $defaultOrder = [];
 
+    /** @var int rows counted at most, see count_cap() */
+    protected $countCap;
+
     public function __construct()
     {
         $this->CI = &get_instance();
+        $cap = (int) (getenv('DATATABLE_COUNT_CAP') ?: 100000);
+        $this->countCap = max(100, min($cap, 10000000));
+    }
+
+    /**
+     * Counting every row of a table with millions of rows on each page turn is
+     * what makes list pages slow. Counts stop at this many rows: past it the
+     * table says "100,000+", and paging stops there too (an OFFSET that deep is
+     * slow anyway; searching narrows it down). Set DATATABLE_COUNT_CAP in .env.
+     */
+    public function count_cap()
+    {
+        return $this->countCap;
     }
 
     /**
@@ -129,11 +145,13 @@ class Datatable
             $orderable[$i] = $c['order'];
         }
         $params = Params::fromRequest($request, $orderable);
+        $params->start = min($params->start, $this->countCap);
 
         $db = $this->db();
 
         $total = $this->count($db, []);
         $filtered = $params->terms() === [] ? $total : $this->count($db, $params->terms());
+        $capped = $total >= $this->countCap || $filtered >= $this->countCap;
 
         $this->apply_source($db);
         $db->select($this->select, false);
@@ -164,8 +182,71 @@ class Datatable
             'draw' => $params->draw,
             'recordsTotal' => $total,
             'recordsFiltered' => $filtered,
+            'capped' => $capped,
             'data' => $data,
         ];
+    }
+
+    /**
+     * How many rows the search matches, counted up to $upTo (so a huge table
+     * is never counted in full). Used to refuse an export that is too big
+     * before any of it is sent.
+     *
+     * @param array<int, string> $terms
+     */
+    public function count_matches(array $terms, $upTo)
+    {
+        $db = $this->db();
+        $this->apply_source($db);
+        $this->apply_search($db, $terms);
+        $db->select('1', false)->limit(max(1, (int) $upTo));
+        $inner = $db->get_compiled_select();
+
+        $row = $db->query('SELECT COUNT(*) AS c FROM ('.$inner.') counted')->row_array();
+
+        return (int) ($row['c'] ?? 0);
+    }
+
+    /**
+     * Walks every row the current search matches, in chunks, without loading
+     * them all: each chunk is read with "WHERE key > last ORDER BY key LIMIT n"
+     * (keyset paging), so the cost of a chunk does not grow with its position
+     * the way OFFSET does. Used by exports. Stops after $max rows.
+     *
+     * @param array<int, string> $terms  the search words (see Params::terms())
+     * @param string             $keySql sortable unique column in the query, e.g. 't.id'
+     * @param string             $keyAs  its name in the selected rows, e.g. 'id'
+     * @param callable           $each   receives an array of rows per chunk; return false to stop
+     *
+     * @return int rows delivered
+     */
+    public function each_chunk(array $terms, $keySql, $keyAs, callable $each, $chunk = 1000, $max = PHP_INT_MAX)
+    {
+        $db = $this->db();
+        $last = 0;
+        $done = 0;
+
+        while ($done < $max) {
+            $this->apply_source($db);
+            $db->select($this->select, false);
+            $this->apply_search($db, $terms);
+            $db->where($keySql.' >', $last, false);
+            $db->order_by($keySql, 'ASC', false);
+            $rows = $db->limit(min($chunk, $max - $done))->get()->result_array();
+
+            if ($rows === []) {
+                break;
+            }
+
+            $done += count($rows);
+            $last = (int) end($rows)[$keyAs];
+
+            if ($each($rows) === false || count($rows) < $chunk) {
+                break;
+            }
+        }
+
+        return $done;
     }
 
     /**
@@ -205,8 +286,12 @@ class Datatable
     {
         $this->apply_source($db);
         $this->apply_search($db, $terms);
+        $db->select('1', false)->limit($this->countCap);
+        $inner = $db->get_compiled_select();
 
-        return (int) $db->count_all_results();
+        $row = $db->query('SELECT COUNT(*) AS c FROM ('.$inner.') counted')->row_array();
+
+        return (int) ($row['c'] ?? 0);
     }
 
     protected function apply_source($db)

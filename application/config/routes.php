@@ -89,6 +89,7 @@ $route['admin/c/([a-z][a-z0-9_]*)/form'] = 'crud/crud/form/$1';
 $route['admin/c/([a-z][a-z0-9_]*)/form/(\d+)'] = 'crud/crud/form/$1/$2';
 $route['admin/c/([a-z][a-z0-9_]*)/save'] = 'crud/crud/save/$1';
 $route['admin/c/([a-z][a-z0-9_]*)/delete/(\d+)'] = 'crud/crud/delete/$1/$2';
+$route['admin/c/([a-z][a-z0-9_]*)/export/(csv|xlsx|pdf)'] = 'crud/crud/export/$1/$2';
 
 // ---- Login security and the audit log ---------------------------------------
 $route['admin/security'] = 'security/login_security/index';

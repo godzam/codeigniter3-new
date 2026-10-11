@@ -55,6 +55,18 @@ $config = [
 					<?php if (isset($errors['table'])): ?><div class="invalid-feedback"><?php echo $e($errors['table']) ?></div><?php endif ?>
 					<div class="form-text">Created now with an <code>id</code>, your fields, <code>created_at</code> and <code>updated_at</code>.</div>
 				</div>
+				<div class="col-12">
+					<div class="form-label mb-1">Download the list as</div>
+					<?php foreach (\App\Export\Exporter::FORMATS as $format => $label):
+						$can = isset($formats_available[$format]);
+						$on = in_array($format, (array) ($values['export'] ?? []), true); ?>
+						<div class="form-check form-check-inline">
+							<input class="form-check-input g-export" type="checkbox" id="g-export-<?php echo $e($format) ?>" value="<?php echo $e($format) ?>"<?php echo $on ? ' checked' : '' ?><?php echo $can ? '' : ' disabled' ?>>
+							<label class="form-check-label" for="g-export-<?php echo $e($format) ?>"><?php echo $e($label) ?><?php echo $can ? '' : ' (not installed)' ?></label>
+						</div>
+					<?php endforeach ?>
+					<div class="form-text">Off by default. Exports follow the search box, are limited per format (<?php echo $e(implode(', ', array_map(static function ($f) { return strtoupper($f).' '.number_format(\App\Export\Exporter::limit($f)); }, array_keys($formats_available)))) ?> rows), and need the <code>export</code> permission of this module.</div>
+				</div>
 			</div>
 		</div>
 	</div>

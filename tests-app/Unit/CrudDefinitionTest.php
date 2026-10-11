@@ -43,6 +43,16 @@ final class CrudDefinitionTest extends TestCase
         $this->assertSame(255, $d['fields'][0]['maxlength']);
     }
 
+    public function testExportIsOffByDefaultAndKeepsOnlyKnownFormats(): void
+    {
+        $this->assertSame([], $this->normalize($this->module())['definition']['export']);
+
+        $on = $this->normalize($this->module() + ['export' => ['xlsx', 'csv', 'exe', 'csv', 7, 'pdf']]);
+        $this->assertSame(['csv', 'pdf', 'xlsx'], $on['definition']['export'], 'unknown and repeated formats are dropped, order is stable');
+
+        $this->assertSame([], $this->normalize($this->module() + ['export' => 'csv'])['definition']['export'], 'a non-list is ignored');
+    }
+
     public function testKeyRules(): void
     {
         foreach (['', 'a', '1abc', 'has space', 'users', 'roles', 'generator', str_repeat('a', 31)] as $slug) {
