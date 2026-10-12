@@ -27,6 +27,9 @@
 		// data-filters="#box": inputs inside it are sent with every request and reload the table when changed.
 		var filterBox = el.getAttribute('data-filters') ? document.querySelector(el.getAttribute('data-filters')) : null;
 
+		// Big tables are counted only up to a cap (see Datatable::count_cap()); the server says so with capped:true.
+		var capped = false;
+
 		var table = new DataTable(el, {
 			serverSide: true,
 			processing: true,
@@ -52,6 +55,9 @@
 				bottomStart: 'info',
 				bottomEnd: 'paging'
 			},
+			infoCallback: function (settings, start, end, max, total, pre) {
+				return capped ? pre.replace(/ of ([\d.,\s\u00a0]+)/, ' of $1+') : pre;
+			},
 			language: {
 				search: '',
 				searchPlaceholder: 'Search…',
@@ -68,6 +74,8 @@
 		if (filterBox) {
 			filterBox.addEventListener('change', function () { table.ajax.reload(); });
 		}
+
+		table.on('xhr.dt', function (e, settings, json) { capped = !!(json && json.capped); });
 
 		table.on('dt-error', function () {
 			if (window.App) { window.App.toast('error', 'Could not load the table. Reload the page and try again.'); }

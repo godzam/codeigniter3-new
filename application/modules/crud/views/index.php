@@ -4,6 +4,7 @@
  * @var bool $can_create
  * @var bool $can_edit
  * @var bool $can_delete
+ * @var array<string, string> $export_formats format => label the signed-in user may download
  * @var string $csrf_name
  * @var string $csrf_hash
  */
@@ -20,7 +21,8 @@ foreach ($module['fields'] as $f) {
 	]];
 }
 if (!$columns) { $columns[] = ['ID', ['priority' => 1, 'orderable' => false]]; }
-$columns[] = ['', ['priority' => 2, 'orderable' => false, 'class' => 'text-end text-nowrap']];
+// No actions column for a user who can neither edit nor delete (data() leaves it out too).
+if ($can_edit || $can_delete) { $columns[] = ['', ['priority' => 2, 'orderable' => false, 'class' => 'text-end text-nowrap']]; }
 ?>
 <div id="crud-root"
 	data-base="<?php echo htmlspecialchars(site_url('admin/c/'.$slug), ENT_QUOTES, 'UTF-8') ?>"
@@ -29,9 +31,22 @@ $columns[] = ['', ['priority' => 2, 'orderable' => false, 'class' => 'text-end t
 	data-table="crud-table"
 	data-singular="<?php echo htmlspecialchars($module['title'], ENT_QUOTES, 'UTF-8') ?>">
 
-	<?php if ($can_create): ?>
-		<div class="d-flex justify-content-end mb-3">
-			<button type="button" class="btn btn-primary" data-crud-add><i class="bi bi-plus-lg me-1"></i>Add</button>
+	<?php if ($can_create || $export_formats): ?>
+		<div class="d-flex justify-content-end flex-wrap gap-2 mb-3">
+			<?php if ($export_formats): ?>
+				<div class="dropdown">
+					<button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-download me-1"></i>Export</button>
+					<ul class="dropdown-menu dropdown-menu-end">
+						<li><h6 class="dropdown-header">Matches the search box</h6></li>
+						<?php foreach ($export_formats as $format => $label): ?>
+							<li><a class="dropdown-item" href="<?php echo htmlspecialchars(site_url('admin/c/'.$slug.'/export/'.$format), ENT_QUOTES, 'UTF-8') ?>" data-crud-export><?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></a></li>
+						<?php endforeach ?>
+					</ul>
+				</div>
+			<?php endif ?>
+			<?php if ($can_create): ?>
+				<button type="button" class="btn btn-primary" data-crud-add><i class="bi bi-plus-lg me-1"></i>Add</button>
+			<?php endif ?>
 		</div>
 	<?php endif ?>
 

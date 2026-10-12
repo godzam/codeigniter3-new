@@ -21,6 +21,7 @@ final class Labels
             'login.locked' => ['Blocked', 'danger'],
             'login.unblocked' => ['Unblocked', 'success'],
             'install' => ['Installed', 'primary'],
+            'export' => ['Exported', 'primary'],
         ];
 
         if (isset($known[$action])) {

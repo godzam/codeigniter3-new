@@ -23,6 +23,16 @@
 	var submit = document.getElementById('crud-submit');
 	var headers = { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json, text/html' };
 
+	// The export links carry the search box's text, so the file matches what the table shows.
+	root.addEventListener('click', function (e) {
+		var link = e.target.closest('a[data-crud-export]');
+		if (!link || !window.jQuery) { return; }
+		var url = new URL(link.getAttribute('href'), window.location.href);
+		var term = window.jQuery('#' + root.getAttribute('data-table')).DataTable().search();
+		if (term) { url.searchParams.set('search', term); } else { url.searchParams.delete('search'); }
+		link.setAttribute('href', url.toString());
+	});
+
 	function reload() {
 		if (window.jQuery) { window.jQuery('#' + root.getAttribute('data-table')).DataTable().ajax.reload(null, false); }
 	}

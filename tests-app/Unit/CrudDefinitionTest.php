@@ -43,6 +43,48 @@ final class CrudDefinitionTest extends TestCase
         $this->assertSame(255, $d['fields'][0]['maxlength']);
     }
 
+    public function testExportIsOffByDefaultAndKeepsOnlyKnownFormats(): void
+    {
+        $this->assertSame([], $this->normalize($this->module())['definition']['export']);
+
+        $on = $this->normalize($this->module() + ['export' => ['xlsx', 'csv', 'exe', 'csv', 7, 'pdf']]);
+        $this->assertSame(['csv', 'pdf', 'xlsx'], $on['definition']['export'], 'unknown and repeated formats are dropped, order is stable');
+
+        $this->assertSame([], $this->normalize($this->module() + ['export' => 'csv'])['definition']['export'], 'a non-list is ignored');
+    }
+
+    public function testActionsDefaultToAllAndCanBeReducedToNone(): void
+    {
+        $this->assertSame(['create', 'edit', 'delete'], $this->normalize($this->module())['definition']['actions'], 'a new module can add, edit and delete');
+
+        $some = $this->normalize($this->module() + ['actions' => ['delete', 'create', 'view', 'drop']]);
+        $this->assertSame(['create', 'delete'], $some['definition']['actions'], 'only known actions, in a fixed order');
+
+        $none = $this->normalize($this->module() + ['actions' => []]);
+        $this->assertSame([], $none['definition']['actions'], 'an empty list makes a read-only module');
+    }
+
+    public function testEditingKeepsTheActionsWhenNoneAreSent(): void
+    {
+        $first = $this->normalize($this->module() + ['actions' => ['create']])['definition'];
+        $again = $this->normalize($this->module(), $first);
+
+        $this->assertSame(['create'], $again['definition']['actions']);
+    }
+
+    public function testModulesFromBeforeTheSettingKeepAllActions(): void
+    {
+        $this->assertSame(['create', 'edit', 'delete'], Definition::actions(['slug' => 'old']));
+    }
+
+    public function testPermissionActionsFollowWhatTheModuleOffers(): void
+    {
+        $this->assertSame(['view', 'create', 'edit', 'delete'], Definition::permissionActions(['slug' => 'old']));
+        $this->assertSame(['view', 'create'], Definition::permissionActions(['actions' => ['create'], 'export' => []]));
+        $this->assertSame(['view'], Definition::permissionActions(['actions' => [], 'export' => []]));
+        $this->assertSame(['view', 'edit', 'export'], Definition::permissionActions(['actions' => ['edit'], 'export' => ['csv']]));
+    }
+
     public function testKeyRules(): void
     {
         foreach (['', 'a', '1abc', 'has space', 'users', 'roles', 'generator', str_repeat('a', 31)] as $slug) {

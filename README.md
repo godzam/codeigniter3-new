@@ -1,7 +1,7 @@
 # CodeIgniter 3 Starter — PHP 8.4+, HMVC, DevelBar
 
 ![CI](https://github.com/godzam/codeigniter3-new/actions/workflows/ci.yml/badge.svg)
-![PHP](https://img.shields.io/badge/PHP-8.1%E2%80%938.5-777bb4)
+![PHP](https://img.shields.io/badge/PHP-8.2%E2%80%938.5-777bb4)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 A ready-to-run [CodeIgniter 3](https://codeigniter.com/userguide3/) starting point for people who want a **classic, lightweight PHP MVC framework** without fighting PHP 8 deprecation warnings, and without spending a few days wiring up modules, auth, a dev toolbar, and modern tooling by hand.
@@ -19,6 +19,8 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 - [Authentication](#authentication)
 - [Roles & permissions](#roles--permissions)
 - [Login security & audit log](#login-security--audit-log)
+- [Exports](#exports)
+- [Big data & several servers](#big-data--several-servers)
 - [One-click installer](#one-click-installer)
 - [Cloudflare Turnstile](#cloudflare-turnstile)
 - [Error handling](#error-handling)
@@ -51,13 +53,13 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 | **Structured logging** | An opt-in Monolog-backed `Logger` library alongside CI3's native `log_message()`, for when you want multiple handlers or structured context. |
 | **`/health` endpoint** | A JSON status endpoint for load balancers/uptime monitors. |
 | **Docker** | `Dockerfile` + `docker-compose.yml` (app + MySQL + phpMyAdmin) for a one-command local environment. |
-| **CI** | GitHub Actions: boots the app and hits real routes on PHP 8.1–8.4, plus separate PHPStan/CS-Fixer/PHPUnit jobs. Dependabot keeps dependencies current. |
+| **CI** | GitHub Actions: boots the app and hits real routes on PHP 8.2–8.4, plus separate PHPStan/CS-Fixer/PHPUnit jobs. Dependabot keeps dependencies current. |
 
 None of the vendored pieces are exotic — HMVC and DevelBar are the same libraries ([wiredesignz HMVC](https://github.com/5112n4/wiredesignz-codeigniter-modular-extensions) + [DevelBar](https://github.com/JCSama/CodeIgniter-develbar)) that have powered plenty of CodeIgniter 3 apps for years — just vendored in, patched for current PHP, and verified working together, with modern tooling and a real (if minimal) auth system layered on top.
 
 ## Requirements
 
-- **PHP 8.1 or newer** (this repo is developed against 8.3/8.4 and targets 8.5)
+- **PHP 8.2 or newer** (this repo is developed against 8.3/8.4 and targets 8.5), with the `zip` extension for Excel exports
 - **[Composer](https://getcomposer.org/)** — required now (auth, `.env`, logging, and all dev tooling depend on it), unlike a bare CodeIgniter 3 install
 - A web server (Apache, Nginx, [Laragon](https://laragon.org/), [XAMPP](https://www.apachefriends.org/)) — or nothing at all, PHP's built-in server works fine for local development
 - MySQL/MariaDB, or any other database CodeIgniter 3's Query Builder supports — needed for auth/migrations; the homepage and `/example` module work without one
@@ -406,9 +408,13 @@ The request is whitelisted (`App\DataTables\Params`): columns are picked by inde
 - the table, created for you (`id`, your fields, `created_at`, `updated_at`),
 - a list at `admin/c/<key>` as a server-side DataTable (search, sort, paging, mobile layout),
 - add / edit in a modal (full screen on phones) and delete with a confirmation,
-- four permissions (`<key>.view`, `.create`, `.edit`, `.delete`) that show up on the Roles page, and a sidebar entry for whoever may view it.
+- permissions per module (`<key>.view`, `.create`, `.edit`, `.delete`, and `.export` when exports are on) that show up on the Roles page the moment the module exists, and a sidebar entry for whoever may view it,
+- a choice of **what the module can do**: tick any of Add / Edit / Delete (viewing is always there), so a module can be add-only, edit-only, read-only, ... — see below,
+- optionally, **Export** to CSV, Excel and PDF (tick the formats when you create the module; off by default, see [Exports](#exports)).
 
 The `admin` role is granted the new permissions automatically; give other roles access on the Roles page.
+
+**Two layers of control.** The module's *actions* (Generator → "What can be done with the records") decide what exists at all: an action that is switched off is a 404 for everybody, `super_admin` included, its button and column disappear, and its permission is not shown on the Roles page. The *permissions* then decide, per role, who may use what is left. Editing the module later keeps the two in step: a permission that no longer exists is removed from every role, a new one is given to the `admin` role. Modules made before this setting keep all three actions.
 
 **Who can do what.** `super_admin` is for the developers: only they see the Generator (there is deliberately no permission that could hand it out), and other users never see `super_admin` accounts or the role. `admin` is the highest role for everyone else and uses the modules you generate.
 
@@ -484,6 +490,57 @@ $this->audit->event('export', 'posts', null, 'Monthly report');     // anything 
 ```
 
 Values are shortened (500 characters each, ~60 KB per entry) and keys that look like secrets are hidden; pass extra column names as the last argument to hide more. The table grows forever — delete old rows with your own scheduled query if you need a retention period.
+
+## Exports
+
+When you create a module in the generator you can tick **CSV**, **Excel** and **PDF** under "Download the list as". Nothing is on by default. The list page then gets an **Export** button that downloads what the search box currently matches (oldest first), for users whose role has the module's `export` permission (`super_admin` always; give other roles the permission on the Roles page — the `admin` role gets it for new modules).
+
+What is exported: the columns of the module without password fields, with dropdown values shown as their labels, uploads as file names, numbers as real numbers in Excel and `Created` at the end. Every export is written to the audit log (format, rows, search).
+
+Built so a big table does not hurt the server:
+
+| | How | Default row limit (`.env`) |
+|---|---|---|
+| CSV | streamed while the table is read | 1,000,000 (`EXPORT_MAX_ROWS_CSV`) |
+| Excel | written straight to a temporary file (flat memory: 60,000 more rows cost under 1 MB), then sent | 250,000 (`EXPORT_MAX_ROWS_XLSX`; Excel itself stops at 1,048,575) |
+| PDF | the page layout is built in memory, so keep it for small lists | 2,000 (`EXPORT_MAX_ROWS_PDF`) |
+
+- The table is read in chunks of 1,000 rows by `id` (keyset paging, not `OFFSET`), so the cost per chunk does not grow with the position.
+- A search that matches more than the limit is refused **before** anything is sent, with a hint to narrow it down or use CSV.
+- One export at a time per person (a lock in the shared cache, see below); `EXPORT_TIME_LIMIT` seconds (default 300) per request.
+- Cells that start with `=`, `+`, `-` or `@` get a leading quote in CSV, and Excel text is stored as text, so a value like `=HYPERLINK(...)` can never run in a spreadsheet.
+- Measured on the test setup (SQLite, PHP 8.3, 403,000 rows): CSV of everything in 3 s, Excel of 111,000 rows in 4.6 s with about 2 MB of memory.
+- PDF uses [dompdf](https://github.com/dompdf/dompdf) (remote files and PHP in the HTML are switched off); Excel is built by `App\Export\XlsxWriter`, a small streaming writer, because libraries that hold the whole workbook in memory need hundreds of MB for this size.
+- Behind a reverse proxy with a short timeout (nginx's `proxy_read_timeout` is 60 s by default) raise it, or keep `EXPORT_MAX_ROWS_XLSX` low: Excel files are sent only once finished.
+
+Not included: exporting in the background and e-mailing the file. Past a million rows, do that with a queue worker.
+
+## Big data & several servers
+
+The starter is meant to grow into a large application, so these are built in rather than left as advice. Everything is configured from `.env` (see `.env.example`); with no settings it runs as before on one server.
+
+**Lists (DataTables)**
+- Search, sort and paging happen in SQL; the page size is capped at 100.
+- Counting is capped: past `DATATABLE_COUNT_CAP` rows (default 100,000) the table says "1–10 of 100,000+" and paging stops there, so a page turn never scans millions of rows or runs an `OFFSET` of millions (a crafted `start=900000000` is clamped). Search narrows it down.
+- Generated tables only have a primary key. For a table that will hold millions of rows add indexes for the columns you sort by or filter on (`ALTER TABLE ... ADD INDEX`) — sorting an unindexed text column of 400,000 rows takes about a second on SQLite, more on a busy server. The search box uses `LIKE '%word%'`, which no index can serve; for very large tables replace it with a prefix search or a search engine.
+
+**Several app servers behind a load balancer**
+
+| Setting (`.env`) | What it does |
+|---|---|
+| `TRUSTED_PROXIES` | Addresses/subnets of your load balancer or CDN. **Set this**, otherwise every visitor looks like the balancer and one person's wrong passwords block everybody (login blocking is per IP). The real address is then read from `X-Forwarded-For`. |
+| `SESS_DRIVER` | `files` (default; needs sticky sessions with more than one server), `database` (table `ci_sessions`, created by the migrations) or `redis`. `SESS_SAVE_PATH` overrides the location. |
+| `CACHE_DRIVER` | `file` (default), `redis` or `memcached`. Used by the rate limiter and the export lock; falls back to files if the backend is unreachable. |
+| `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | For the two settings above (`docker compose --profile ha up` starts a Redis). |
+| `LOG_CHANNEL=stderr` | Write logs to standard error so the platform (Docker, Kubernetes, systemd) collects them in one place. `LOG_THRESHOLD` sets the level. |
+
+- **Uploads** go to `uploads/`. Mount shared storage (NFS, EFS, ...) there on every server — local disks would give each server its own files. There is no S3 driver.
+- **Health checks:** `GET /health` (alive) and `GET /health/ready` (a real query runs, the shared cache answers, `application/cache` and `application/logs` are writable) answer `200`/`503` with only ok/failed per check. Point the balancer's check at `/health/ready`.
+- **Deploys:** `php index.php console migrate` takes a MySQL advisory lock, so several servers migrating at once is safe.
+- **Housekeeping:** `audit_logs` only grows. Set *Settings → Security → Keep the audit log for (days)* and run `php index.php console prune` nightly from cron; it also drops idle login-lock rows. Deleting is done 2,000 rows at a time so the tables are never locked for long.
+- **Stateless app servers:** nothing else is kept on the server's disk besides the above (settings, roles, menus and modules live in the database).
+
+Not included (so you know): database read replicas / sharding, a job queue, S3 storage, and caching of settings/permissions (they are small queries on every request; role changes apply immediately because nothing is cached).
 
 ## One-click installer
 
@@ -569,6 +626,7 @@ php index.php console migrate          # run pending migrations
 php index.php console seed             # run every application/seeds/*_seeder.php
 php index.php console seed users       # run one seeder by name
 php index.php console unblock <ip|email|all>   # lift a login block (see Login security)
+php index.php console prune            # delete old audit rows / idle lock rows (run it nightly from cron)
 ```
 
 Add a migration with CI3's normal `CI_Migration` API in `application/migrations/`. Add a seeder by creating `application/seeds/<name>_seeder.php` with a class extending `CI_Seeder` and implementing `run()` — see `application/seeds/users_seeder.php`.
@@ -634,7 +692,7 @@ This is the classic CodeIgniter-on-CGI/FastCGI problem. The old rewrite rule sen
 The root `.htaccess` now refuses requests for `.env`, `composer.json`/`composer.lock`, the `application/`, `system/`, `vendor/` and `tests-app/` folders and a few other files, instead of serving them as plain downloads. On nginx add the `deny` rules above; and ideally keep secrets out of the web root altogether in production.
 
 **I see a blank page or a 500 error.**
-Turn on PHP error display and check your PHP version (`php -v`) — this starter needs 8.1+. If you're on shared hosting, check its error log; `display_errors` is often off by default there.
+Turn on PHP error display and check your PHP version (`php -v`) — this starter needs 8.2+. If you're on shared hosting, check its error log; `display_errors` is often off by default there.
 
 **"Deprecated: Creation of dynamic property" warnings are back.**
 This usually means `system/` got replaced with a fresh, unpatched CodeIgniter 3 download. See [PHP 8.2+ compatibility notes](#php-82-compatibility-notes) below.

@@ -95,7 +95,7 @@ class Module_generator extends MX_Controller
             return;
         }
 
-        $this->form(null, ['title' => '', 'slug' => '', 'table' => '', 'icon' => 'bi-table', 'fields' => []], []);
+        $this->form(null, ['title' => '', 'slug' => '', 'table' => '', 'icon' => 'bi-table', 'actions' => \App\Crud\Definition::ACTIONS, 'export' => [], 'fields' => []], []);
     }
 
     public function edit($slug = '')
@@ -158,7 +158,7 @@ class Module_generator extends MX_Controller
         );
 
         if ($result['definition'] === null) {
-            $this->form($module, $input + ['title' => '', 'slug' => '', 'table' => '', 'icon' => 'bi-table', 'fields' => []], $result['errors']);
+            $this->form($module, $input + ['title' => '', 'slug' => '', 'table' => '', 'icon' => 'bi-table', 'actions' => \App\Crud\Definition::ACTIONS, 'export' => [], 'fields' => []], $result['errors']);
 
             return;
         }
@@ -201,7 +201,7 @@ class Module_generator extends MX_Controller
             $fields[$field['name']] = $field;
         }
 
-        return ['slug' => $module['slug'], 'table' => $module['table'], 'title' => $module['title'], 'icon' => $module['icon'], 'fields' => $fields];
+        return ['slug' => $module['slug'], 'table' => $module['table'], 'title' => $module['title'], 'icon' => $module['icon'], 'actions' => \App\Crud\Definition::actions($module), 'export' => $module['export'] ?? [], 'fields' => $fields];
     }
 
     /**
@@ -223,6 +223,7 @@ class Module_generator extends MX_Controller
             ->render('form', [
                 'module' => $module,
                 'values' => $values,
+                'formats_available' => \App\Export\Exporter::available(),
                 'errors' => $errors,
                 'locked' => $locked,
                 'types' => FieldTypes::labels(),

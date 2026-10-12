@@ -3,11 +3,9 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
- * Simple fixed-window rate limiter backed by CI3's file cache driver —
- * no Redis/Memcached required. Good enough for things like login-attempt
- * throttling on a single-server deployment. For multi-server setups,
- * point the cache driver at something shared (redis/memcached) via CI3's
- * normal cache config instead of 'file'.
+ * Simple fixed-window rate limiter. It keeps its counters in the Sharedcache
+ * library: files by default (no Redis needed on one server); with several app
+ * servers set CACHE_DRIVER=redis (or memcached) in .env so they share counters.
  *
  * Usage:
  *   $this->load->library('ratelimiter');
@@ -24,7 +22,7 @@ class Ratelimiter
     public function __construct()
     {
         $this->CI = &get_instance();
-        $this->CI->load->driver('cache', ['adapter' => 'file', 'key_prefix' => 'ratelimit_']);
+        $this->CI->load->library('sharedcache');
     }
 
     /**
@@ -38,15 +36,15 @@ class Ratelimiter
      */
     public function attempt($key, $max_attempts = 5, $window_seconds = 60)
     {
-        $cache_key = md5($key);
-        $data = $this->CI->cache->get($cache_key);
+        $cache_key = md5('ratelimit_'.$key);
+        $data = $this->CI->sharedcache->get($cache_key);
 
         if ($data === false || time() > $data['reset_at']) {
             $data = ['count' => 0, 'reset_at' => time() + $window_seconds];
         }
 
         ++$data['count'];
-        $this->CI->cache->save($cache_key, $data, $window_seconds);
+        $this->CI->sharedcache->save($cache_key, $data, $window_seconds);
 
         return $data['count'] <= $max_attempts;
     }
@@ -57,7 +55,7 @@ class Ratelimiter
      */
     public function retry_after($key)
     {
-        $data = $this->CI->cache->get(md5($key));
+        $data = $this->CI->sharedcache->get(md5('ratelimit_'.$key));
 
         if ($data === false) {
             return 0;
@@ -72,6 +70,6 @@ class Ratelimiter
      */
     public function reset($key)
     {
-        $this->CI->cache->delete(md5($key));
+        $this->CI->sharedcache->delete(md5('ratelimit_'.$key));
     }
 }

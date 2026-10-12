@@ -224,7 +224,8 @@ $config['directory_trigger'] = 'd';
 | your log files will fill up very fast.
 |
 */
-$config['log_threshold'] = 0;
+// LOG_THRESHOLD in .env: 0 off, 1 errors, 2 debug, 3 info, 4 everything.
+$config['log_threshold'] = (int) (getenv('LOG_THRESHOLD') ?: 0);
 
 /*
 |--------------------------------------------------------------------------
@@ -235,7 +236,7 @@ $config['log_threshold'] = 0;
 | application/logs/ directory. Use a full server path.
 |
 */
-$config['log_path'] = '';
+$config['log_path'] = (string) (getenv('LOG_PATH') ?: '');
 
 /*
 |--------------------------------------------------------------------------
@@ -379,11 +380,28 @@ $config['encryption_key'] = '';
 | except for 'cookie_prefix' and 'cookie_httponly', which are ignored here.
 |
 */
-$config['sess_driver'] = 'files';
+// Where sessions live. With one server 'files' is fine. Behind a load balancer
+// every server must see the same sessions: set SESS_DRIVER=database (table
+// ci_sessions, created by the migrations) or SESS_DRIVER=redis in .env, or
+// keep 'files' and use sticky sessions. SESS_SAVE_PATH is the folder (files),
+// the table (database) or tcp://host:6379?auth=secret (redis); for redis it
+// defaults to REDIS_HOST/REDIS_PORT/REDIS_PASSWORD.
+$sess_driver = strtolower((string) (getenv('SESS_DRIVER') ?: 'files'));
+$sess_driver = in_array($sess_driver, ['files', 'database', 'redis', 'memcached'], true) ? $sess_driver : 'files';
+$sess_path = getenv('SESS_SAVE_PATH') ?: null;
+if ($sess_driver === 'database') {
+    $sess_path = $sess_path ?: 'ci_sessions';
+} elseif ($sess_driver === 'redis' && !$sess_path) {
+    $sess_path = 'tcp://'.(getenv('REDIS_HOST') ?: '127.0.0.1').':'.(getenv('REDIS_PORT') ?: 6379)
+        .(getenv('REDIS_PASSWORD') ? '?auth='.rawurlencode(getenv('REDIS_PASSWORD')) : '');
+} elseif ($sess_driver === 'memcached' && !$sess_path) {
+    $sess_path = '127.0.0.1:11211';
+}
+$config['sess_driver'] = $sess_driver;
 $config['sess_cookie_name'] = 'ci_session';
 $config['sess_samesite'] = 'Lax';
 $config['sess_expiration'] = 7200;
-$config['sess_save_path'] = NULL;
+$config['sess_save_path'] = $sess_path;
 $config['sess_match_ip'] = FALSE;
 $config['sess_time_to_update'] = 300;
 $config['sess_regenerate_destroy'] = FALSE;
@@ -486,7 +504,11 @@ $config['time_reference'] = 'local';
 | Comma-separated:	'10.0.1.200,192.168.5.0/24'
 | Array:		array('10.0.1.200', '192.168.5.0/24')
 */
-$config['proxy_ips'] = '';
+// Behind a load balancer or CDN every request comes from the proxy's address, so
+// without this the login block would hit the proxy and lock out everyone at once.
+// TRUSTED_PROXIES in .env: the proxy addresses/subnets (comma separated); the
+// visitor's address is then read from X-Forwarded-For.
+$config['proxy_ips'] = (string) (getenv('TRUSTED_PROXIES') ?: '');
 
 /*
 |--------------------------------------------------------------------------

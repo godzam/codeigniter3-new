@@ -32,6 +32,14 @@ services:
       timeout: 5s
       retries: 10
 
+  # Optional: `docker compose --profile ha up` also starts Redis. Then set
+  # SESS_DRIVER=redis, CACHE_DRIVER=redis and REDIS_HOST=redis for the app.
+  redis:
+    image: redis:7
+    profiles: ["ha"]
+    ports:
+      - "6379:6379"
+
   phpmyadmin:
     image: phpmyadmin:5
     environment:
