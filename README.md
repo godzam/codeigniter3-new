@@ -408,10 +408,13 @@ The request is whitelisted (`App\DataTables\Params`): columns are picked by inde
 - the table, created for you (`id`, your fields, `created_at`, `updated_at`),
 - a list at `admin/c/<key>` as a server-side DataTable (search, sort, paging, mobile layout),
 - add / edit in a modal (full screen on phones) and delete with a confirmation,
-- five permissions (`<key>.view`, `.create`, `.edit`, `.delete`, `.export`) that show up on the Roles page, and a sidebar entry for whoever may view it,
+- permissions per module (`<key>.view`, `.create`, `.edit`, `.delete`, and `.export` when exports are on) that show up on the Roles page the moment the module exists, and a sidebar entry for whoever may view it,
+- a choice of **what the module can do**: tick any of Add / Edit / Delete (viewing is always there), so a module can be add-only, edit-only, read-only, ... — see below,
 - optionally, **Export** to CSV, Excel and PDF (tick the formats when you create the module; off by default, see [Exports](#exports)).
 
 The `admin` role is granted the new permissions automatically; give other roles access on the Roles page.
+
+**Two layers of control.** The module's *actions* (Generator → "What can be done with the records") decide what exists at all: an action that is switched off is a 404 for everybody, `super_admin` included, its button and column disappear, and its permission is not shown on the Roles page. The *permissions* then decide, per role, who may use what is left. Editing the module later keeps the two in step: a permission that no longer exists is removed from every role, a new one is given to the `admin` role. Modules made before this setting keep all three actions.
 
 **Who can do what.** `super_admin` is for the developers: only they see the Generator (there is deliberately no permission that could hand it out), and other users never see `super_admin` accounts or the role. `admin` is the highest role for everyone else and uses the modules you generate.
 

@@ -314,6 +314,7 @@
 			slug: document.getElementById('g-slug').value,
 			table: document.getElementById('g-table').value,
 			icon: document.getElementById('g-icon').value,
+			actions: Array.prototype.map.call(document.querySelectorAll('.g-action:checked'), function (c) { return c.value; }),
 			export: Array.prototype.map.call(document.querySelectorAll('.g-export:checked'), function (c) { return c.value; }),
 			fields: Array.prototype.map.call(holder.querySelectorAll('.g-field'), read)
 		});

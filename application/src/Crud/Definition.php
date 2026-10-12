@@ -24,6 +24,9 @@ final class Definition
 
     public const MAX_FIELDS = 40;
 
+    /** Record actions a module can switch off (listing is always possible). */
+    public const ACTIONS = ['create', 'edit', 'delete'];
+
     /** Download formats a module can offer (see App\Export\Exporter). */
     public const EXPORT_FORMATS = ['csv', 'pdf', 'xlsx'];
     public const MAX_OPTIONS = 100;
@@ -71,6 +74,14 @@ final class Definition
         $icon = $icon === '' ? 'bi-table' : $icon;
         if (!preg_match('/^bi-[a-z0-9-]{1,60}$/', $icon)) {
             $errors['icon'] = 'Icon must be a Bootstrap Icons class such as bi-box-seam.';
+        }
+
+        // Which of add / edit / delete the module has at all. Not sent = unchanged (all three for a new
+        // module); an empty list makes a read-only module.
+        if (isset($input['actions']) && is_array($input['actions'])) {
+            $actions = array_values(array_intersect(self::ACTIONS, array_map('strval', $input['actions'])));
+        } else {
+            $actions = $editing ? self::actions($existing) : self::ACTIONS;
         }
 
         // Which download formats the list offers (none by default). Unknown ones are dropped.
@@ -134,11 +145,47 @@ final class Definition
                 'table' => $table,
                 'title' => $title,
                 'icon' => $icon,
+                'actions' => $actions,
                 'export' => $export,
                 'fields' => $fields,
             ],
             'errors' => [],
         ];
+    }
+
+    /**
+     * The record actions a stored module has. Modules made before the setting
+     * existed have no "actions" key and keep all three.
+     *
+     * @param array<string, mixed> $module
+     *
+     * @return array<int, string>
+     */
+    public static function actions(array $module)
+    {
+        if (!isset($module['actions']) || !is_array($module['actions'])) {
+            return self::ACTIONS;
+        }
+
+        return array_values(array_intersect(self::ACTIONS, $module['actions']));
+    }
+
+    /**
+     * Every permission key a module offers: view always, add / edit / delete when switched on,
+     * export when at least one download format is.
+     *
+     * @param array<string, mixed> $module
+     *
+     * @return array<int, string> actions, not prefixed with the module key
+     */
+    public static function permissionActions(array $module)
+    {
+        $actions = array_merge(['view'], self::actions($module));
+        if (!empty($module['export'])) {
+            $actions[] = 'export';
+        }
+
+        return $actions;
     }
 
     /**

@@ -4,6 +4,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 require_once APPPATH.'src/autoload.php';
 
+use App\Crud\Definition;
 use App\Crud\FieldTypes;
 use App\Crud\Uploader;
 
@@ -166,7 +167,7 @@ class Crud_store
         }
 
         $this->modules = null;
-        $this->grant_to_admin($definition['slug']);
+        $this->grant_to_admin($definition['slug'], Definition::permissionActions($definition));
 
         return null;
     }
@@ -209,8 +210,36 @@ class Crud_store
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
         $this->modules = null;
+        $this->sync_permissions($old, $definition);
 
         return null;
+    }
+
+    /**
+     * Keeps the roles' permissions in step with what the module offers: a
+     * permission it no longer has (delete switched off, exports removed) is taken
+     * away from every role; a new one is given to the admin role, like at creation.
+     *
+     * @param array<string, mixed> $old
+     * @param array<string, mixed> $new
+     */
+    protected function sync_permissions(array $old, array $new)
+    {
+        $before = Definition::permissionActions($old);
+        $after = Definition::permissionActions($new);
+        $slug = $new['slug'];
+
+        $removed = array_diff($before, $after);
+        if ($removed !== []) {
+            $this->db()->where_in('permission', array_map(static function ($a) use ($slug) {
+                return $slug.'.'.$a;
+            }, $removed))->delete('role_permissions');
+        }
+
+        $added = array_diff($after, $before);
+        if ($added !== []) {
+            $this->grant_to_admin($slug, $added);
+        }
     }
 
     /**
@@ -233,6 +262,8 @@ class Crud_store
     }
 
     /**
+     * Every permission key a module could ever have (used to clean up when it is deleted).
+     *
      * @return array<int, string>
      */
     public function permission_keys($slug)
@@ -413,7 +444,10 @@ class Crud_store
     // Internals
     // ------------------------------------------------------------------
 
-    protected function grant_to_admin($slug)
+    /**
+     * @param array<int, string> $actions e.g. ['view', 'create']
+     */
+    protected function grant_to_admin($slug, array $actions)
     {
         $db = $this->db();
         $admin = $db->get_where('roles', ['slug' => 'admin'])->row();
@@ -421,7 +455,8 @@ class Crud_store
             return;
         }
 
-        foreach ($this->permission_keys($slug) as $key) {
+        foreach ($actions as $action) {
+            $key = $slug.'.'.$action;
             $exists = $db->where(['role_id' => $admin->id, 'permission' => $key])->count_all_results('role_permissions') > 0;
             if (!$exists) {
                 $db->insert('role_permissions', ['role_id' => $admin->id, 'permission' => $key]);

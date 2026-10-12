@@ -21,7 +21,8 @@ foreach ($module['fields'] as $f) {
 	]];
 }
 if (!$columns) { $columns[] = ['ID', ['priority' => 1, 'orderable' => false]]; }
-$columns[] = ['', ['priority' => 2, 'orderable' => false, 'class' => 'text-end text-nowrap']];
+// No actions column for a user who can neither edit nor delete (data() leaves it out too).
+if ($can_edit || $can_delete) { $columns[] = ['', ['priority' => 2, 'orderable' => false, 'class' => 'text-end text-nowrap']]; }
 ?>
 <div id="crud-root"
 	data-base="<?php echo htmlspecialchars(site_url('admin/c/'.$slug), ENT_QUOTES, 'UTF-8') ?>"

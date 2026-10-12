@@ -55,7 +55,19 @@ $config = [
 					<?php if (isset($errors['table'])): ?><div class="invalid-feedback"><?php echo $e($errors['table']) ?></div><?php endif ?>
 					<div class="form-text">Created now with an <code>id</code>, your fields, <code>created_at</code> and <code>updated_at</code>.</div>
 				</div>
-				<div class="col-12">
+				<div class="col-12 col-md-6">
+					<div class="form-label mb-1">What can be done with the records</div>
+					<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="g-act-view" checked disabled><label class="form-check-label" for="g-act-view">View</label></div>
+					<?php foreach (['create' => 'Add', 'edit' => 'Edit', 'delete' => 'Delete'] as $action => $label):
+						$on = in_array($action, (array) ($values['actions'] ?? \App\Crud\Definition::ACTIONS), true); ?>
+						<div class="form-check form-check-inline">
+							<input class="form-check-input g-action" type="checkbox" id="g-act-<?php echo $e($action) ?>" value="<?php echo $e($action) ?>"<?php echo $on ? ' checked' : '' ?>>
+							<label class="form-check-label" for="g-act-<?php echo $e($action) ?>"><?php echo $e($label) ?></label>
+						</div>
+					<?php endforeach ?>
+					<div class="form-text">Untick to make the module add-only, read-only, ... A switched-off action does not exist for anybody and does not appear on the Roles page. Each switched-on action is still a permission per role.</div>
+				</div>
+				<div class="col-12 col-md-6">
 					<div class="form-label mb-1">Download the list as</div>
 					<?php foreach (\App\Export\Exporter::FORMATS as $format => $label):
 						$can = isset($formats_available[$format]);

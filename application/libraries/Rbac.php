@@ -6,6 +6,7 @@ require_once APPPATH.'src/autoload.php';
 
 use App\Auth\PermissionRegistry;
 use App\Auth\RoleRules;
+use App\Crud\Definition;
 
 /**
  * Role-based access control: which role the signed-in user has *right now*,
@@ -66,20 +67,23 @@ class Rbac
 
             // Modules made with the CRUD generator declare theirs in the database.
             $modules = $this->quietly(function ($db) {
-                return $db->select('slug, title, icon')->order_by('id', 'ASC')->get('crud_modules');
+                return $db->select('slug, title, icon, definition')->order_by('id', 'ASC')->get('crud_modules');
             });
             foreach ($modules === false ? [] : $modules->result_array() as $module) {
                 $title = $module['title'];
+                $definition = json_decode((string) $module['definition'], true);
+                $offered = Definition::permissionActions(is_array($definition) ? $definition : []);
+                $all = [
+                    'view' => 'See the '.$title.' list',
+                    'create' => 'Add '.$title.' records',
+                    'edit' => 'Edit '.$title.' records',
+                    'delete' => 'Delete '.$title.' records',
+                    'export' => 'Download '.$title.' as CSV, Excel or PDF',
+                ];
                 $this->registry->addGroup($module['slug'], [
                     'label' => $title,
                     'icon' => $module['icon'],
-                    'permissions' => [
-                        'view' => 'See the '.$title.' list',
-                        'create' => 'Add '.$title.' records',
-                        'edit' => 'Edit '.$title.' records',
-                        'delete' => 'Delete '.$title.' records',
-                        'export' => 'Download '.$title.' as CSV, Excel or PDF (when the module offers it)',
-                    ],
+                    'permissions' => array_intersect_key($all, array_flip($offered)),
                 ]);
             }
         }

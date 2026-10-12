@@ -2,6 +2,7 @@
 
 defined('BASEPATH') or exit('No direct script access allowed');
 
+use App\Crud\Definition;
 use App\Crud\FieldTypes;
 use App\Crud\RecordValidator;
 use App\Crud\Uploader;
@@ -55,9 +56,9 @@ class Crud extends MX_Controller
             ->add_foot('<script src="'.asset_url('js/crud.js').'"></script>')
             ->render('index', [
                 'module' => $module,
-                'can_create' => can($module['slug'].'.create'),
-                'can_edit' => can($module['slug'].'.edit'),
-                'can_delete' => can($module['slug'].'.delete'),
+                'can_create' => $this->allowed($module, 'create'),
+                'can_edit' => $this->allowed($module, 'edit'),
+                'can_delete' => $this->allowed($module, 'delete'),
                 'export_formats' => $this->export_formats($module),
                 'csrf_name' => $this->security->get_csrf_token_name(),
                 'csrf_hash' => $this->security->get_csrf_hash(),
@@ -68,8 +69,8 @@ class Crud extends MX_Controller
     {
         $module = $this->module($slug, 'view');
         $store = $this->crud_store;
-        $canEdit = can($module['slug'].'.edit');
-        $canDelete = can($module['slug'].'.delete');
+        $canEdit = $this->allowed($module, 'edit');
+        $canDelete = $this->allowed($module, 'delete');
 
         $listed = array_values(array_filter($module['fields'], static function ($f) {
             return !empty($f['list']);
@@ -90,7 +91,10 @@ class Crud extends MX_Controller
             $plain = !FieldTypes::isUpload($f['type']) && $f['type'] !== FieldTypes::MULTISELECT;
             $table->column($f['name'], $store->col($f['name']), !empty($f['search']), $plain);
         }
-        $table->column('_actions', null)->default_order([$store->col('id').' DESC']);
+        if ($canEdit || $canDelete) {
+            $table->column('_actions', null);
+        }
+        $table->default_order([$store->col('id').' DESC']);
 
         // Labels of dropdown values for the whole page, in one query per field.
         $labels = [];
@@ -454,6 +458,16 @@ class Crud extends MX_Controller
 
 
     /**
+     * Whether this module has the action (add / edit / delete) and the signed-in user's role may use it.
+     *
+     * @param array<string, mixed> $module
+     */
+    protected function allowed(array $module, $action)
+    {
+        return in_array($action, Definition::actions($module), true) && can($module['slug'].'.'.$action);
+    }
+
+    /**
      * The formats the signed-in user may download this module as: the ones the
      * module turned on, this server can produce, and the user's role allows.
      *
@@ -519,6 +533,11 @@ class Crud extends MX_Controller
     {
         $module = $this->crud_store->find($slug);
         if (!$module) {
+            show_404();
+        }
+
+        // An action the module was made without (e.g. delete) does not exist for anybody, super admin included.
+        if (in_array($action, Definition::ACTIONS, true) && !in_array($action, Definition::actions($module), true)) {
             show_404();
         }
 
