@@ -10,7 +10,8 @@ use App\Install\Requirements;
 /**
  * One-click setup behind /install and the button on the Welcome page: makes
  * the database (and its connection file) if needed, runs every migration,
- * saves the application name and creates the first administrator.
+ * saves the application name and the Turnstile choice, and creates the first
+ * administrator.
  *
  * Who may use it:
  *   - only while no user exists (afterwards /install is gone for good), and
@@ -192,9 +193,28 @@ class Installer
 
             // 3. Settings and the first administrator -------------------------
             $now = date('Y-m-d H:i:s');
-            $connection->where('name', 'app_name')->delete('settings');
-            $connection->insert('settings', ['name' => 'app_name', 'value' => $v['app_name'], 'updated_at' => $now]);
+
+            $settings = [
+                'app_name' => $v['app_name'],
+                // Explicit, both ways: the checkbox decides whether login and
+                // register are protected. Unticked saves "off", so the
+                // Turnstile default (on) cannot switch it on behind the
+                // installer's back when keys are added later.
+                'turnstile_enabled' => ($v['turnstile_enabled'] ?? '0') === '1' ? '1' : '0',
+            ];
+            if ($settings['turnstile_enabled'] === '1') {
+                $settings['turnstile_site_key'] = (string) ($v['turnstile_site_key'] ?? '');
+                $settings['turnstile_secret_key'] = (string) ($v['turnstile_secret_key'] ?? '');
+            }
+
+            foreach ($settings as $name => $value) {
+                $connection->where('name', $name)->delete('settings');
+                $connection->insert('settings', ['name' => $name, 'value' => $value, 'updated_at' => $now]);
+            }
             $steps[] = 'Saved the application name';
+            $steps[] = $settings['turnstile_enabled'] === '1'
+                ? 'Turned on Cloudflare Turnstile for the login and register forms'
+                : 'Left Cloudflare Turnstile off (login and register work without it)';
 
             if ($connection->where('email', $v['admin_email'])->count_all_results('users') > 0) {
                 return ['ok' => false, 'error' => 'That email already has an account.', 'steps' => $steps];

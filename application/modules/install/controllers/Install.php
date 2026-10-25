@@ -112,6 +112,10 @@ class Install extends MX_Controller
             'db_user' => 'root',
             'db_pass' => '',
             'db_name' => trim($folder, '_') ?: 'app',
+            // Opt-in: unticked installs the site with Turnstile switched off.
+            'turnstile_enabled' => '0',
+            'turnstile_site_key' => '',
+            'turnstile_secret_key' => '',
         ];
     }
 }

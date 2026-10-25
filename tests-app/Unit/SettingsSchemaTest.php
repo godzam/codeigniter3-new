@@ -134,6 +134,22 @@ final class SettingsSchemaTest extends TestCase
         $this->assertStringContainsString('Captcha', $result['errors']['secret']);
     }
 
+    public function testASwitchThatIsOnByDefaultDoesNotBlockSavingBeforeItsKeysExist(): void
+    {
+        // Turnstile ships switched on; with no keys saved yet it must not
+        // refuse to save every other setting on the page.
+        $schema = new Schema(['security' => ['label' => 'Security', 'fields' => [
+            'captcha' => ['label' => 'Captcha', 'type' => 'switch', 'default' => true, 'requires' => ['site_key', 'secret']],
+            'site_key' => ['label' => 'Site key', 'type' => 'text', 'default' => ''],
+            'secret' => ['label' => 'Secret', 'type' => 'password', 'default' => ''],
+        ]]]);
+
+        $result = $schema->validate(['captcha' => '1', 'site_key' => '', 'secret' => '']);
+
+        $this->assertSame([], $result['errors']);
+        $this->assertSame('1', $result['values']['captcha']);
+    }
+
     public function testRequiredFieldsAreNotCheckedWhileTheSwitchIsOff(): void
     {
         $result = $this->schemaWithDependency()->validate(['site_key' => '', 'secret' => '']);

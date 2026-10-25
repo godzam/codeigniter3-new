@@ -18,6 +18,11 @@ final class FieldTypes
     public const MULTISELECT = 'multiselect';
     public const IMAGE = 'image';
     public const FILE = 'file';
+    public const HIDDEN = 'hidden';
+    public const HIDDEN_SESSION = 'session';
+    public const HIDDEN_DATE = 'date';
+    public const HIDDEN_TIMESTAMP = 'timestamp';
+    public const HIDDEN_CUSTOM = 'custom';
 
     /** Columns every generated table has besides the declared fields. */
     public const RESERVED_COLUMNS = ['id', 'created_at', 'updated_at'];
@@ -49,6 +54,11 @@ final class FieldTypes
             self::MULTISELECT => 'Multi select',
             self::IMAGE => 'Image upload',
             self::FILE => 'File upload',
+            self::HIDDEN => 'Hidden',
+            self::HIDDEN_SESSION => 'Session',
+            self::HIDDEN_DATE => 'Date (hidden)',
+            self::HIDDEN_TIMESTAMP => 'Timestamp (hidden)',
+            self::HIDDEN_CUSTOM => 'Custom',
         ];
     }
 
@@ -64,7 +74,7 @@ final class FieldTypes
 
     public static function isUpload($type)
     {
-        return in_array($type, [self::IMAGE, self::FILE], true);
+        return in_array($type, [self::IMAGE, self::FILE], true) && $type !== self::HIDDEN && $type !== self::HIDDEN_SESSION && $type !== self::HIDDEN_DATE && $type !== self::HIDDEN_TIMESTAMP && $type !== self::HIDDEN_CUSTOM;
     }
 
     /**
@@ -72,7 +82,7 @@ final class FieldTypes
      */
     public static function isSearchable($type)
     {
-        return in_array($type, [self::TEXT, self::TEXTAREA, self::NUMBER, self::EMAIL, self::DATE], true);
+        return in_array($type, [self::TEXT, self::TEXTAREA, self::NUMBER, self::EMAIL, self::DATE], true) && $type !== self::HIDDEN && $type !== self::HIDDEN_SESSION && $type !== self::HIDDEN_DATE && $type !== self::HIDDEN_TIMESTAMP && $type !== self::HIDDEN_CUSTOM;
     }
 
     /**
@@ -80,7 +90,7 @@ final class FieldTypes
      */
     public static function canBeUnique($type)
     {
-        return in_array($type, [self::TEXT, self::NUMBER, self::EMAIL], true);
+        return in_array($type, [self::TEXT, self::NUMBER, self::EMAIL], true) && $type !== self::HIDDEN && $type !== self::HIDDEN_SESSION && $type !== self::HIDDEN_DATE && $type !== self::HIDDEN_TIMESTAMP && $type !== self::HIDDEN_CUSTOM;
     }
 
     /**
@@ -106,6 +116,12 @@ final class FieldTypes
             case self::SELECT:
             case self::RADIO:
                 return ['type' => 'VARCHAR', 'constraint' => 190, 'null' => true];
+            case self::HIDDEN:
+            case self::HIDDEN_SESSION:
+            case self::HIDDEN_DATE:
+            case self::HIDDEN_TIMESTAMP:
+            case self::HIDDEN_CUSTOM:
+                return ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true];
             default: // text, password, image, file
                 return ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true];
         }

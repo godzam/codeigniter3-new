@@ -20,8 +20,9 @@ use App\Security\TurnstileVerifier;
  *
  * "login" and "register" are the built-in form names; any other name N is
  * switched with a "turnstile_on_N" setting (declare it in config/app_settings.php).
- * When Turnstile is off — or its keys are missing — widget() renders nothing
- * and verify_for() passes, so the forms keep working.
+ * Turnstile is on by default: protection starts the moment both keys are saved.
+ * Until then — or when it is switched off — widget() renders nothing and
+ * verify_for() passes, so the forms keep working.
  *
  * Verification fails closed: if Cloudflare can't be reached, the form is
  * rejected (and the cause is logged) rather than silently skipped.
@@ -40,6 +41,9 @@ class Turnstile
     /** @var array<int, string> */
     protected $errors = [];
 
+    /** @var bool so a half-filled key pair is reported once per request, not per call */
+    protected $incompleteLogged = false;
+
     public function __construct()
     {
         $this->CI = &get_instance();
@@ -50,9 +54,25 @@ class Turnstile
      */
     public function enabled($form = null)
     {
-        if (!$this->CI->settings->get('turnstile_enabled')
-            || trim((string) $this->CI->settings->get('turnstile_site_key')) === ''
-            || trim((string) $this->CI->settings->get('turnstile_secret_key')) === '') {
+        if (!$this->CI->settings->get('turnstile_enabled')) {
+            return false;
+        }
+
+        $site_key = trim((string) $this->CI->settings->get('turnstile_site_key'));
+        $secret_key = trim((string) $this->CI->settings->get('turnstile_secret_key'));
+
+        if ($site_key === '' || $secret_key === '') {
+            // On by default, but not configured yet: stay inert (no widget, no
+            // request to Cloudflare) — and if exactly one key was saved, say so
+            // in the log, because that looks protected but is not.
+            if (($site_key === '') !== ($secret_key === '') && !$this->incompleteLogged) {
+                $this->incompleteLogged = true;
+                log_message(
+                    'error',
+                    'Turnstile is on but incomplete: the '.($site_key === '' ? 'site' : 'secret').' key is empty, so the check is skipped.'
+                );
+            }
+
             return false;
         }
 

@@ -190,6 +190,14 @@ final class Schema
                 continue;
             }
 
+            // A switch that is already on by default (Turnstile) must not
+            // refuse to save every other setting until its keys arrive: what
+            // it guards stays inert until they are filled in anyway. Switches
+            // an operator turns on themselves are still required to be whole.
+            if ($this->cast($name, $field['default'] ?? false) === true) {
+                continue;
+            }
+
             foreach ($field['requires'] as $required) {
                 if (isset($errors[$required])) {
                     continue;

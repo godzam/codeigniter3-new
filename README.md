@@ -18,6 +18,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 - [Template & theming](#template--theming)
 - [Authentication](#authentication)
 - [Roles & permissions](#roles--permissions)
+- [Menu builder & page builder](#menu-builder--page-builder)
 - [Login security & audit log](#login-security--audit-log)
 - [Exports](#exports)
 - [Big data & several servers](#big-data--several-servers)
@@ -41,8 +42,8 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 | **HMVC (Modular Extensions)** | Instead of one flat `application/controllers` + `application/models` + `application/views`, group each feature into its own self-contained module: `application/modules/blog/{controllers,models,views}`. Modules can even call each other. A working example ships in `application/modules/example/`. |
 | **Bootstrap 5 template & theming** | Public, auth, and admin layouts (Bootstrap 5.3, Bootstrap Icons, SweetAlert2 — all vendored, no CDN). An admin **Settings** page controls the primary/secondary colors, light/dark/auto mode, corner roundness, font, sidebar and navbar style, app name and logo — stored in the database, with a live preview. |
 | **Roles & permissions (RBAC)** | Create, edit and delete roles from the admin UI, and tick which permissions each one holds. Permissions are declared per module (`module.action`) and checked with `can()` / `require_permission()`. `super_admin` is the built-in top role: every permission, can't be edited, deleted or created again. |
-| **Cloudflare Turnstile** | Optional CAPTCHA on the login and register forms, switched on and configured from Settings → Security (site key, secret key, per-form switches, widget theme and size). Fails closed if Cloudflare can't be reached. |
-| **Authentication** | Email/password register, login, and logout (`application/modules/auth`), password hashing, session-backed `is_logged_in()`/`require_login()`/`require_role()` helpers, and per-IP login rate limiting. Not a full framework — a real, working starting point for your own auth. |
+| **Cloudflare Turnstile** | CAPTCHA on the login and register forms, offered as a checkbox **in the installer** (tick it, paste both keys, and protection starts at once; leave it unticked and the forms are installed without it). It stays inert (no widget, no Cloudflare call) while a key is missing, and Settings → Security holds the keys, the per-form switches, widget theme and size. Fails closed if Cloudflare can't be reached. |
+| **Authentication** | Email/password register, login, and logout (`application/modules/auth`), password hashing, session-backed `is_logged_in()`/`require_login()`/`require_role()` helpers, and per-IP rate limiting for both login and sign-up. Not a full framework — a real, working starting point for your own auth. |
 | **Database migrations & seeders** | CI3's built-in `Migration` library, enabled and wired to a CLI runner, plus a small seeder pattern CI3 doesn't ship with (`application/seeds/`). |
 | **DevelBar** | A toolbar docked to the bottom of the page (development only) showing benchmarks, database queries, session data, loaded config, and a per-view memory breakdown. |
 | **`.env` support** | Optional — every setting that reads from it has a hardcoded fallback, so nothing breaks if `.env` doesn't exist. |
@@ -51,6 +52,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 | **Tests** | PHPUnit for the application layer — real unit tests plus HTTP-level feature tests that boot the app as a subprocess — separate from CodeIgniter's own framework test suite in `tests/`. |
 | **Custom error handling** | CI4/Laravel-style: a detailed exception page in development (stack trace with code snippets, request data, editor links), clean per-status-code error pages in production instead of a blank screen, JSON errors for API requests, and `abort(404)` / `abort_if()` / `abort_unless()` helpers. |
 | **Structured logging** | An opt-in Monolog-backed `Logger` library alongside CI3's native `log_message()`, for when you want multiple handlers or structured context. |
+| **Menu & page builders** | Admin → Menus reorders and nests the sidebar (drag, permissions per item, saved as `parent_id`/`position`); Admin → Pages assembles content pages from blocks (hero, text, features, cta, image, HTML) and serves them at `/page/{slug}`. |
 | **`/health` endpoint** | A JSON status endpoint for load balancers/uptime monitors. |
 | **Docker** | `Dockerfile` + `docker-compose.yml` (app + MySQL + phpMyAdmin) for a one-command local environment. |
 | **CI** | GitHub Actions: boots the app and hits real routes on PHP 8.2–8.4, plus separate PHPStan/CS-Fixer/PHPUnit jobs. Dependabot keeps dependencies current. |
@@ -77,7 +79,7 @@ New to CodeIgniter? The [official CI3 user guide](https://codeigniter.com/usergu
 
 2. **Set up the database** — the easy way, or by hand.
 
-   **The easy way:** run the app (step 3), open the home page and press **Install now**. One form creates the database if it does not exist, saves the connection in `application/config/database.php` if there is none (or it does not work), runs every migration, saves your application name, creates your **super admin** account and signs you in. In Laragon the defaults (server `localhost`, user `root`, empty password) work as they are. See [One-click installer](#one-click-installer).
+   **The easy way:** run the app (step 3), open the home page and press **Install now**. One form creates the database if it does not exist, saves the connection in `application/config/database.php` if there is none (or it does not work), runs every migration, saves your application name, creates your **super admin** account and signs you in (it also asks whether to protect login and sign-up with Cloudflare Turnstile — untick it and the forms work without it). In Laragon the defaults (server `localhost`, user `root`, empty password) work as they are. See [One-click installer](#one-click-installer).
 
    **By hand** (also fine; skip it if you are just poking around — the homepage and `/example` module don't need a database; auth, migrations, and `/health` do):
    ```bash
@@ -297,6 +299,7 @@ Bootstrap, Bootstrap Icons, and SweetAlert2 are vendored in `assets/vendor/` (no
 - `GET`/`POST /register`, `GET`/`POST /login`, `GET /logout` (short URLs — see `application/config/routes.php`)
 - Passwords hashed with `password_hash()`/`password_verify()`
 - Wrong passwords are counted per IP address and per account and lead to a temporary block (see [Login security & audit log](#login-security--audit-log)); if the security tables are missing it falls back to 5 attempts per 60 seconds per IP (`application/libraries/Ratelimiter.php`)
+- Sign-ups are rate limited per IP address too: 5 attempts per 10 minutes, counted before validation so a bot hammering the form with garbage hits the limit as well (`Auth::handle_register()`)
 - A single `role` column on `users` (seeded default: `user`; the seeded admin gets `admin`) for basic access control
 
 Use it from any controller via `application/helpers/auth_helper.php` (autoloaded — no `$this->load->helper()` needed):
@@ -464,6 +467,29 @@ Things to know:
 - Choices read from another table load up to 500 rows into the dropdown.
 - Everything is validated on the server (`App\Crud\Definition`, `RecordValidator`, `Uploader`); the browser only helps.
 
+## Menu builder & page builder
+
+Two admin screens that take content out of the code. Run `php index.php console migrate` once for their tables (`menus`, `pages`); until then both screens say so and the app keeps working with the file-based menu.
+
+### Admin → Menus (`application/modules/menus`)
+
+Builds the **admin sidebar**. The entries in `application/config/menu.php` are always shown; anything built here is merged in by `menu_items()` (`application/helpers/theme_helper.php`).
+
+- A **section** row is a small heading, a **link** is an entry with a URL, an optional Bootstrap icon, and an optional permission (`menus.view`, `users.view`, …) — nobody sees the item unless their role holds it. Items can be super-admin-only and can be switched off without being deleted.
+- **Drag** rows to reorder them: dropping in the middle of a row makes the dragged item its child, dropping on the top or bottom third puts it next to it (two levels deep, the ↑/↓ buttons do the same without dragging). The order is posted to `POST /admin/menus/reorder` as `[[id, depth], …]` and turned into `parent_id` + `position` by `App\Menus\MenuTree` (unit-tested).
+- Deleting a row moves its children up one level, so the sidebar never shows an orphan.
+- Permissions: `menus.view`, `menus.create`, `menus.edit`, `menus.delete` (held by `admin` by default).
+
+### Admin → Pages (`application/modules/pages`)
+
+Builds content pages served at **`/page/{slug}`** in the public layout.
+
+- A page is a list of **sections** — hero, text block, features, call to action, image, custom HTML. Each block asks for its own fields; everything except *Custom HTML* is escaped on output, and a `text` block only keeps an allow-list of tags.
+- Sections are stored as JSON in `pages.sections` and rendered by `App\Page\SectionTypes` (unit-tested): one row per page, not one per block.
+- **Draft** pages are a preview for anyone holding `pages.edit` (the public sees a 404); **published** pages are public. The address is built from the title when you leave it empty — paste `/page/{slug}` into the menu builder to link it from the sidebar.
+- Each page carries a search description, which becomes `<meta name="description">`.
+- Permissions: `pages.view`, `pages.create`, `pages.edit`, `pages.delete`.
+
 ## Login security & audit log
 
 Run `php index.php console migrate` (the installer does it for you) to create the `login_locks` and `audit_logs` tables. Both features switch themselves off quietly while the tables are missing.
@@ -544,7 +570,7 @@ Not included (so you know): database read replicas / sharding, a job queue, S3 s
 
 ## One-click installer
 
-On a fresh checkout the home page shows a **Finish setting up** card with an **Install now** button (it leads to `/install`). The form asks for the application name and your administrator account (and, only when there is no working connection, the database server, user, password and name) and then, in one go:
+On a fresh checkout the home page shows a **Finish setting up** card with an **Install now** button (it leads to `/install`). The form asks for the application name, your administrator account, whether to protect login and sign-up with Cloudflare Turnstile (and, only when there is no working connection, the database server, user, password and name) and then, in one go:
 
 1. checks the server (PHP version, extensions, writable folders);
 2. creates the database if it is missing (needs a MySQL / MariaDB user that may create databases; `root` in Laragon can);
@@ -552,16 +578,18 @@ On a fresh checkout the home page shows a **Finish setting up** card with an **I
 4. runs every migration;
 5. saves the application name and creates your account as a **super admin** (the developer role), then signs you in and opens the dashboard.
 
+**Turnstile is the installer's call.** The **Security** section has one checkbox: tick it and paste the site and secret key, and login and sign-up are protected from the first minute. Leave it unticked and the installer records Turnstile as **off** — no widget, no Cloudflare call, the login and register forms work exactly like before — and you can switch it on any time under **Settings → Security**. (A hand-made install, `console migrate`, keeps the built-in default instead: on, so it starts protecting as soon as keys are entered.)
+
 **It locks itself.** As soon as the application has a user, `/install` redirects away and the card disappears, so it cannot be used to reset or take over a running site. It also only works in the `development` / `testing` environments; on a server running `CI_ENV=production` it is a 404 unless you put `INSTALLER_ENABLED=true` in `.env` for the first install (remove it afterwards). If you prefer the command line, `php index.php console migrate` and `console seed` still do the same job.
 
 If the installer cannot write `application/config/database.php` (folder not writable) it shows the file's content so you can save it yourself.
 
 ## Cloudflare Turnstile
 
-A privacy-friendly CAPTCHA for the login and register forms. It is **off by default**; nothing changes until you turn it on.
+A privacy-friendly CAPTCHA for the login and register forms. The [installer](#one-click-installer) asks whether to use it; a site whose settings were created by hand (`console migrate`) is **on by default**: the check starts the moment both keys are saved. While a key is still empty it stays completely inert — no widget on the page, no request to Cloudflare — so a fresh install and local development behave normally, and a half-filled pair (one key but not the other) is reported in the application log so it can't silently look protected.
 
 1. In the Cloudflare dashboard, create a Turnstile site and copy its **site key** and **secret key**.
-2. Log in as an admin → **Settings → Security**, switch Turnstile on, paste both keys, and choose which forms use it (login, register), plus the widget theme and size. Saving with Turnstile on but a key missing is rejected.
+2. Log in as an admin → **Settings → Security**, paste both keys, and choose which forms use it (login, register), plus the widget theme and size. Turn the switch off to leave the forms unprotected even with the keys set.
 
 The keys can also come from the environment (`TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` in `.env`) as defaults; a value saved in Settings wins. The secret is never printed back into the page.
 

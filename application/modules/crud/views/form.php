@@ -84,6 +84,27 @@ $size = static function ($kb) { return $kb >= 1024 ? rtrim(rtrim(number_format($
 				<input class="form-control" type="file" id="<?php echo $e($id) ?>" name="<?php echo $e($name) ?>" accept="<?php echo $e($accept) ?>"<?php echo $has ? '' : '' ?>>
 				<div class="form-text">Up to <?php echo $e($size($up['max_kb'])) ?> · <?php echo $e(strtoupper(implode(', ', $up['types']))) ?><?php echo $has ? ' · choosing a file replaces the current one' : '' ?><?php echo $type === 'image' && !empty($up['max_width']) ? ' · resized to '.(int) $up['max_width'].' px wide' : '' ?></div>
 
+			<?php elseif ($type === 'hidden'): ?>
+				<?php
+				// A hidden field: no visible control, the browser just submits it. What it holds
+				// is chosen when the field is built: a custom value, the session id, today's
+				// date or the current timestamp (see "hidden type" in the generator).
+				$hiddenChoices = ['custom' => 'Custom', 'session' => 'Session id', 'date' => 'Date (today)', 'timestamp' => 'Timestamp (now)'];
+				$hiddenType = isset($hiddenChoices[$f['hidden_type'] ?? '']) ? $f['hidden_type'] : 'custom';
+				$submitted = $value;
+				if (!$editing) {
+					if ($hiddenType === 'session') { $submitted = session_id() ?: ''; }
+					elseif ($hiddenType === 'date') { $submitted = date('Y-m-d'); }
+					elseif ($hiddenType === 'timestamp') { $submitted = date('Y-m-d H:i:s'); }
+				}
+				?>
+				<div class="d-flex align-items-center gap-2 flex-wrap">
+					<span class="pill pill-secondary"><i class="bi bi-eye-slash me-1"></i>hidden · <?php echo $e($hiddenChoices[$hiddenType]) ?></span>
+					<?php if ($submitted !== '' && $submitted !== null): ?>
+						<code class="small text-body-secondary"><?php echo $e($hiddenType === 'session' ? '(session id)' : $submitted) ?></code>
+					<?php endif ?>
+				</div>
+				<input type="hidden" id="<?php echo $e($id) ?>" name="<?php echo $e($name) ?>" value="<?php echo $e($submitted) ?>">
 			<?php else: ?>
 				<?php
 				$htmlType = ['number' => 'number', 'email' => 'email', 'date' => 'date', 'password' => 'password'][$type] ?? 'text';

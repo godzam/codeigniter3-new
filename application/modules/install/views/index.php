@@ -91,6 +91,28 @@ $error = static function ($key) use ($errors, $e) { return isset($errors[$key]) 
 		<?php echo $error('app_name') ?>
 	</div>
 
+	<h2 class="setup-h">Security</h2>
+	<div class="form-check mb-2">
+		<input class="form-check-input" type="checkbox" value="1" id="turnstile_enabled" name="turnstile_enabled"<?php echo $values['turnstile_enabled'] === '1' ? ' checked' : '' ?>>
+		<label class="form-check-label" for="turnstile_enabled">Protect login and sign-up with Cloudflare Turnstile</label>
+		<div class="form-text">
+			A privacy-friendly CAPTCHA. Leave it unticked to install without it: the login and register forms work normally,
+			and you can turn it on later under Settings → Security.
+		</div>
+	</div>
+	<div class="row g-2 mb-4">
+		<div class="col-12">
+			<label for="turnstile_site_key" class="form-label">Turnstile site key</label>
+			<input type="text" class="form-control<?php echo $invalid('turnstile_site_key') ?>" id="turnstile_site_key" name="turnstile_site_key" value="<?php echo $e($values['turnstile_site_key']) ?>" autocomplete="off" spellcheck="false" placeholder="Only when the box above is ticked">
+			<?php echo $error('turnstile_site_key') ?>
+		</div>
+		<div class="col-12">
+			<label for="turnstile_secret_key" class="form-label">Turnstile secret key</label>
+			<input type="password" class="form-control<?php echo $invalid('turnstile_secret_key') ?>" id="turnstile_secret_key" name="turnstile_secret_key" autocomplete="off" placeholder="From the Cloudflare dashboard">
+			<?php echo $error('turnstile_secret_key') ?>
+		</div>
+	</div>
+
 	<h2 class="setup-h">Administrator</h2>
 	<p class="small text-body-secondary">The first account is a <strong>super admin</strong>, the developer role with access to everything. Create day-to-day admins later on the Users page.</p>
 	<div class="mb-3">

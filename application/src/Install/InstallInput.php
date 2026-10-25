@@ -6,7 +6,9 @@ namespace App\Install;
  * Checks what the installer form posts. Pure PHP, so it is unit-tested.
  *
  * Database fields are only required (and only returned) when the installer
- * has to write a database connection itself.
+ * has to write a database connection itself. Cloudflare Turnstile is opt-in
+ * here: the checkbox decides whether login and register are protected, and
+ * its two keys are only required (and only returned) when it is ticked.
  */
 final class InstallInput
 {
@@ -27,6 +29,11 @@ final class InstallInput
             'admin_name' => trim($get('admin_name')),
             'admin_email' => trim($get('admin_email')),
             'admin_password' => $get('admin_password'),
+            // Off unless the box was ticked: an install that does not ask for
+            // Turnstile must leave login and register open (and working).
+            'turnstile_enabled' => $get('turnstile_enabled') === '1' ? '1' : '0',
+            'turnstile_site_key' => '',
+            'turnstile_secret_key' => '',
         ];
 
         if ($values['app_name'] === '' || mb_strlen($values['app_name']) > 60) {
@@ -46,6 +53,19 @@ final class InstallInput
             $errors['admin_password'] = 'Use at most 72 characters.';
         } elseif ($password !== $get('admin_password_confirm')) {
             $errors['admin_password_confirm'] = 'The two passwords are not the same.';
+        }
+
+        if ($values['turnstile_enabled'] === '1') {
+            foreach (['turnstile_site_key' => 'site', 'turnstile_secret_key' => 'secret'] as $field => $label) {
+                $key = trim($get($field));
+                $values[$field] = $key;
+
+                if ($key === '') {
+                    $errors[$field] = 'Enter the Turnstile '.$label.' key from the Cloudflare dashboard, or leave the box unticked and add it later under Settings → Security.';
+                } elseif (!preg_match('/^[A-Za-z0-9_-]{1,200}$/', $key)) {
+                    $errors[$field] = 'That does not look like a Turnstile '.$label.' key.';
+                }
+            }
         }
 
         if ($needsDatabase) {

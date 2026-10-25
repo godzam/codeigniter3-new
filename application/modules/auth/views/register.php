@@ -32,4 +32,6 @@
 	<button type="submit" class="btn btn-primary btn-submit w-100">Create account <i class="bi bi-arrow-right ms-1"></i></button>
 <?php echo form_close() ?>
 
+<?php if (!empty($msg)): ?><div class="alert alert-success"><?= $msg ?></div><?php endif; ?>
+
 <p class="auth-alt">Already have an account? <a href="<?php echo site_url('login') ?>">Log in</a></p>

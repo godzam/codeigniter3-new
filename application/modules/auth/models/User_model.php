@@ -41,4 +41,11 @@ class User_model extends CI_Model
 
         return (int) $this->db->insert_id();
     }
+
+    public function update($id, array $data)
+    {
+        $this->db->where('id', $id)->update($this->table, $data);
+
+        return $this->db->affected_rows() > 0;
+    }
 }

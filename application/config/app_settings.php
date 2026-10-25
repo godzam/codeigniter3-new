@@ -1,27 +1,14 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-/*
+/* 
 | -------------------------------------------------------------------------
 | Application settings schema
 | -------------------------------------------------------------------------
 | Declares the settings editable from the admin Settings page (stored in
 | the `settings` table). Each field has a type, default, and label; the
 | form, validation, and defaults are all generated from this file, so
-| adding a setting here is all it takes for it to appear in the UI:
-|
-|     $config['app_settings']['general']['fields']['support_email'] = array(
-|         'label' => 'Support email', 'type' => 'text', 'default' => '',
-|     );
-|
-| Read it anywhere with $this->settings->get('support_email'). Modules can
-| also add their own with $this->settings->register('blog', [...]).
-|
-| Field types: text, textarea, color, select (needs 'options'), switch,
-| number (optional 'min'/'max'), password (blank = keep current).
-|
-| Defaults here apply until a value is saved, and when no database is
-| configured at all — the site still renders.
+| adding a setting here is all it takes for it to appear in the UI.
 */
 
 $config['app_settings'] = array(
@@ -161,9 +148,9 @@ $config['app_settings'] = array(
 			'turnstile_enabled' => array(
 				'label' => 'Protect forms with Cloudflare Turnstile',
 				'type' => 'switch',
-				'default' => FALSE,
+				'default' => TRUE,
 				'requires' => array('turnstile_site_key', 'turnstile_secret_key'),
-				'help' => 'A privacy-friendly CAPTCHA. Create a site at dash.cloudflare.com → Turnstile and paste its keys below.',
+				'help' => 'A privacy-friendly CAPTCHA. The installer asks whether to switch it on, and the built-in default is on. The check starts as soon as both keys below are saved; with a key still empty it stays completely inert (no widget, no call to Cloudflare), so the forms keep working. Turn it off to leave the forms unprotected even with keys set.',
 			),
 			'turnstile_site_key' => array(
 				'label' => 'Turnstile site key',
@@ -237,7 +224,33 @@ $config['app_settings'] = array(
 				'max' => 3650,
 				'help' => '0 keeps it forever. Older entries are deleted by the scheduled command php index.php console prune (see the README); nothing is deleted without it.',
 			),
+			'email_verification_enabled' => array(
+				'label' => 'Enable email verification',
+				'type' => 'switch',
+				'default' => FALSE,
+				'help' => 'Send verification email when users register. Requires mail configuration.',
+			),
+			'email_from_name' => array(
+				'label' => 'Sender name',
+				'type' => 'text',
+				'default' => '',
+				'help' => 'Name displayed as sender of email. Leave empty to use app name.',
+			),
+			'email_from_address' => array(
+				'label' => 'Sender email address',
+				'type' => 'text',
+				'default' => '',
+				'help' => 'Email address displayed as sender. Leave empty to use no-reply@localhost.',
+			),
+			'password_reset_enabled' => array(
+				'label' => 'Enable password reset',
+				'type' => 'switch',
+				'default' => FALSE,
+				'help' => 'Allow users to reset their password via email link. Requires mail configuration.',
+			),
 		),
 	),
 
 );
+
+/* End of file */

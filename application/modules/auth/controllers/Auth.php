@@ -1,5 +1,4 @@
 <?php
-
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
@@ -10,11 +9,17 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * 1 hour, the 3rd block in a row = 1 day); sign-ins, sign-outs, blocks and
  * registrations are written to the audit log. Where the security tables are
  * missing (migrations not run) it falls back to a plain per-minute limit.
+ * Sign-ups are rate limited per IP address too (5 attempts per 10 minutes, the
+ * same Ratelimiter the login fallback uses): open registration is cheap to
+ * flood, and Turnstile only covers it once its keys are configured.
  *
  * Routes (see application/modules/auth/config/routes.php):
  *   GET|POST /login
  *   GET|POST /register
  *   GET      /logout
+ *   GET|POST /forgot_password
+ *   GET|POST /reset_password/{id}/{token}
+ *   GET      /verify_email/{id}/{token}
  *
  * @property User_model $user_model
  * @property CI_Form_validation $form_validation
@@ -135,6 +140,18 @@ class Auth extends MX_Controller
 
     protected function handle_register()
     {
+        // Count every POST, valid or not, before doing any work: hammering
+        // the form with garbage is exactly what this is here to stop.
+        $rate_key = 'register:'.$this->input->ip_address();
+        if (!$this->ratelimiter->attempt($rate_key, 5, 600)) {
+            $retry_after = $this->ratelimiter->retry_after($rate_key);
+            $this->show('register', 'Register', [
+                'error' => 'Too many sign-up attempts from this address. Please try again in '.$this->loginguard->human($retry_after).'.',
+            ]);
+
+            return;
+        }
+
         $this->form_validation->set_rules('name', 'Name', 'required|min_length[2]');
         $this->form_validation->set_rules('email', 'Email', 'required|valid_email|is_unique[users.email]');
         $this->form_validation->set_rules('password', 'Password', 'required|min_length[8]');
@@ -156,12 +173,25 @@ class Auth extends MX_Controller
             'email' => $this->input->post('email'),
             'password' => password_hash((string) $this->input->post('password'), PASSWORD_DEFAULT),
             'role' => $this->rbac->default_role_slug(), // set on the Roles page
+            'email_verified' => 0,
+            'email_verification_token' => md5(uniqid().$this->input->post('email')),
         ]);
 
+        $this->load->library('email');
+
+        $verification_url = site_url('auth/verify_email/'.$user_id.'/'.$this->user_model->find($user_id)->email_verification_token);
+
+        $this->email->from($this->settings->get('email_from_address') ?: 'no-reply@localhost', $this->settings->get('email_from_name') ?: 'My App');
+        $this->email->to($this->input->post('email'));
+        $this->email->subject('Verify your email');
+        $this->email->message("Please click this link to verify your email: ".site_url('auth/verify_email/'.$user_id.'/'.$this->user_model->find($user_id)->email_verification_token));
+        $this->email->send();
+
         $created = $this->user_model->find($user_id);
-        $this->log_in_as($created);
+        $created->email_verified = 0;
+        $created->email_verification_token = md5(uniqid().$created->email);
         $this->audit->created('users', $user_id, $created->name.' ('.$created->email.')', $created);
-        redirect('dashboard');
+        $this->show('register', 'Register', ['msg' => 'A verification email has been sent to your address. Please check your inbox.']);
     }
 
     public function logout()
@@ -175,6 +205,117 @@ class Auth extends MX_Controller
         redirect('login');
     }
 
+    /** Verify email with token */
+    public function verify_email($id = null, $token = null)
+    {
+        if (is_logged_in()) {
+            redirect('dashboard');
+        }
+
+        $user = $this->user_model->find((int) $id);
+
+        if (!$user || $user->email_verification_token !== $token || $user->email_verified) {
+            show_404();
+        }
+
+        $user->email_verified = 1;
+        $user->email_verification_token = '';
+        $this->user_model->update($user->id, ['email_verified' => 1, 'email_verification_token' => '']);
+
+        $this->log_in_as($user);
+        $this->audit->event('login', 'auth', $user->id, $user->name.' ('.$user->email.')');
+
+        $redirect = $this->session->flashdata('redirect_after_login');
+        redirect($redirect ?: 'dashboard');
+    }
+
+    /** Forgot password: send reset link via email */
+    public function forgot_password()
+    {
+        if (is_logged_in()) {
+            redirect('dashboard');
+        }
+
+        $this->form_validation->set_rules('email', 'Email', 'required|valid_email');
+
+        if (!$this->form_validation->run()) {
+            $this->show('auth', 'Forgot Password');
+            return;
+        }
+
+        $user = $this->user_model->find_by_email($this->input->post('email'));
+
+        if (!$user) {
+            $this->show('auth', 'Forgot Password', ['error' => 'No account found with that email address.']);
+            return;
+        }
+
+        if (!$this->settings->get('password_reset_enabled')) {
+            $this->show('auth', 'Forgot Password', ['error' => 'Password reset is currently disabled.']);
+            return;
+        }
+
+        $token = md5(uniqid().$user->email);
+        $user->password_reset_token = $token;
+        $user->password_reset_expires = date('Y-m-d H:i:s', time() + 86400); // 24 hours
+        $this->user_model->update($user->id, ['password_reset_token' => $token, 'password_reset_expires' => $user->password_reset_expires]);
+
+        $reset_url = site_url('auth/reset_password/'.$user->id.'/'.$token);
+
+        $this->email->from($this->settings->get('email_from_address') ?: 'no-reply@localhost', $this->settings->get('email_from_name') ?: 'My App');
+        $this->email->to($user->email);
+        $this->email->subject('Reset your password');
+        $this->email->message("Click this link to reset your password: ".site_url('auth/reset_password/'.$user->id.'/'.$token));
+        $this->email->send();
+
+        $this->show('auth', 'Forgot Password', ['msg' => 'A password reset link has been sent to your email address.']);
+    }
+
+    /** Reset password with token (show form) */
+    public function reset_password($id = null, $token = null)
+    {
+        if (is_logged_in()) {
+            redirect('dashboard');
+        }
+
+        $user = $this->user_model->find((int) $id);
+
+        if (!$user || $user->password_reset_token !== $token || $user->password_reset_expires < date('Y-m-d H:i:s')) {
+            show_404();
+        }
+
+        $this->show('auth', 'Reset Password');
+    }
+
+    /** Process the new password submission */
+    public function do_reset_password($id = null, $token = null)
+    {
+        if (is_logged_in()) {
+            redirect('dashboard');
+        }
+
+        $user = $this->user_model->find((int) $id);
+
+        if (!$user || $user->password_reset_token !== $token || $user->password_reset_expires < date('Y-m-d H:i:s')) {
+            show_404();
+        }
+
+        $this->form_validation->set_rules('password', 'Password', 'required|min_length[8]');
+
+        if (!$this->form_validation->run()) {
+            $this->show('auth', 'Reset Password');
+            return;
+        }
+
+        $user->password = password_hash((string) $this->input->post('password'), PASSWORD_DEFAULT);
+        $this->user_model->update($user->id, ['password' => $user->password, 'password_reset_token' => '', 'password_reset_expires' => '']);
+
+        $this->log_in_as($user);
+        $this->audit->event('login', 'auth', $user->id, $user->name.' ('.$user->email.')');
+
+        $this->show('auth', 'Reset Password', ['msg' => 'Your password has been reset successfully. You can now log in with your new password.']);
+    }
+
     /**
      * Renders a form view inside the centered 'auth' layout.
      *
@@ -185,9 +326,7 @@ class Auth extends MX_Controller
         $this->template->set_title($title)->render($view, $data, 'auth');
     }
 
-    /**
-     * What the visitor reads when they are (or just became) blocked.
-     */
+    /** What the visitor reads when they are (or just became) blocked. */
     protected function blocked_message($seconds)
     {
         return 'Too many failed login attempts. Please try again in about '.$this->loginguard->human($seconds).'.';

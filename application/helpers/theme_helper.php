@@ -261,6 +261,22 @@ if (!function_exists('menu_items')) {
         $CI = &get_instance();
         $CI->config->load('menu', true, true);
         $items = $CI->config->item('menu', 'menu') ?: [];
+
+        // Items built with Admin -> Menus (application/modules/menus), merged
+        // after the file-based ones. Quiet and wrapped: a missing table or an
+        // unreadable row must never take the sidebar (or the page) down.
+        try {
+            if (!isset($CI->menu_model)) {
+                $CI->load->model('menus/menu_model', 'menu_model');
+            }
+            $built = $CI->menu_model->sidebar_items();
+            if ($built !== []) {
+                $items = array_merge($items, $built);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'Menu builder items skipped: '.get_class($e).': '.$e->getMessage());
+        }
+
         // Modules made with the CRUD generator (each already checked against the user's permissions).
         $modules = $CI->crud_store->menu_entries();
         if ($modules !== []) {

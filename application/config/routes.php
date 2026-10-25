@@ -60,6 +60,9 @@ $route['install'] = 'install/install/index';
 $route['login'] = 'auth/login';
 $route['register'] = 'auth/register';
 $route['logout'] = 'auth/logout';
+$route['forgot_password'] = 'auth/forgot_password';
+$route['reset_password/{id}/{token}'] = 'auth/reset_password/{id}/{token}';
+$route['verify_email/{id}/{token}'] = 'auth/verify_email/{id}/{token}';
 
 // Admin settings (application/modules/settings). The controller is called
 // Admin_settings because a class named Settings would clash with the
@@ -98,3 +101,17 @@ $route['admin/security/unblock/(\d+)'] = 'security/login_security/unblock/$1';
 $route['admin/audit'] = 'audit/audit_log/index';
 $route['admin/audit/data'] = 'audit/audit_log/data';
 $route['admin/audit/(\d+)'] = 'audit/audit_log/show/$1';
+
+// Menu builder (application/modules/menus) — builds the admin sidebar.
+$route['admin/menus'] = 'menus/menu_builder/index';
+$route['admin/menus/create'] = 'menus/menu_builder/create';
+$route['admin/menus/edit/(:num)'] = 'menus/menu_builder/edit/$1';
+$route['admin/menus/delete/(:num)'] = 'menus/menu_builder/delete/$1';
+$route['admin/menus/reorder'] = 'menus/menu_builder/reorder';
+
+// Page builder (application/modules/pages) — content pages at /page/{slug}.
+$route['admin/pages'] = 'pages/pages/index';
+$route['admin/pages/create'] = 'pages/pages/create';
+$route['admin/pages/edit/(:num)'] = 'pages/pages/edit/$1';
+$route['admin/pages/delete/(:num)'] = 'pages/pages/delete/$1';
+$route['page/(:any)'] = 'pages/pages/view/$1';
