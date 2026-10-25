@@ -61,6 +61,8 @@ $route['login'] = 'auth/login';
 $route['register'] = 'auth/register';
 $route['logout'] = 'auth/logout';
 $route['forgot_password'] = 'auth/forgot_password';
+$route['google_login'] = 'auth/google_login';
+$route['google_callback'] = 'auth/google_callback';
 $route['reset_password/{id}/{token}'] = 'auth/reset_password/{id}/{token}';
 $route['verify_email/{id}/{token}'] = 'auth/verify_email/{id}/{token}';
 

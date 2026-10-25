@@ -34,4 +34,13 @@
 
 <?php if (!empty($msg)): ?><div class="alert alert-success"><?= $msg ?></div><?php endif; ?>
 
+<?php $google_enabled = $this->settings->get('google_enabled') ?>
+<?php if ($google_enabled): ?>
+        <button type="button" class="btn btn-outline-secondary btn-google w-100" onclick="window.location.href='<?= site_url('auth/google_login') ?>'"
+            aria-label="Register with Google">
+            <i class="bi bi-google me-2"></i>
+            Register with Google
+        </button>
+<?php endif; ?>
+
 <p class="auth-alt">Already have an account? <a href="<?php echo site_url('login') ?>">Log in</a></p>

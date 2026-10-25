@@ -24,4 +24,13 @@
 	<button type="submit" class="btn btn-primary btn-submit w-100">Log in <i class="bi bi-arrow-right ms-1"></i></button>
 <?php echo form_close() ?>
 
+<?php $google_enabled = $this->settings->get('google_enabled') ?>
+<?php if ($google_enabled): ?>
+        <button type="button" class="btn btn-outline-secondary btn-google w-100" onclick="window.location.href='<?= site_url('auth/google_login') ?>'"
+            aria-label="Login with Google">
+            <i class="bi bi-google me-2"></i>
+            Login with Google
+        </button>
+<?php endif; ?>
+
 <p class="auth-alt">New here? <a href="<?php echo site_url('register') ?>">Create an account</a></p>

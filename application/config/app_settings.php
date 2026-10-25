@@ -248,7 +248,24 @@ $config['app_settings'] = array(
 				'default' => FALSE,
 				'help' => 'Allow users to reset their password via email link. Requires mail configuration.',
 			),
-		),
+		'google_enabled' => array(
+				'label' => 'Enable Google login',
+				'type' => 'switch',
+				'default' => FALSE,
+				'help' => 'Allow users to log in/register with Google account.',
+			),
+		'google_client_id' => array(
+				'label' => 'Google Client ID',
+				'type' => 'text',
+				'default' => getenv('GOOGLE_CLIENT_ID') ?: '',
+				'help' => 'Google OAuth2 Client ID from Google Cloud Console. Required for Google login/register.',
+			),
+		'google_client_secret' => array(
+				'label' => 'Google Client Secret',
+				'type' => 'password',
+				'default' => getenv('GOOGLE_CLIENT_SECRET') ?: '',
+				'help' => 'Google OAuth2 Client Secret from Google Cloud Console. Required for Google login/register.',
+			),
 	),
 
 );

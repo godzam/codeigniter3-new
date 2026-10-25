@@ -205,6 +205,146 @@ class Auth extends MX_Controller
         redirect('login');
     }
 
+    /**
+     * Google OAuth2 login
+     */
+    public function google_login()
+    {
+        if (is_logged_in()) {
+            redirect('dashboard');
+        }
+
+        $enabled = $this->settings->get('google_enabled');
+
+        if (!$enabled) {
+            show_404();
+        }
+
+        $client_id = $this->settings->get('google_client_id');
+        $client_secret = $this->settings->get('google_client_secret');
+
+        if ($client_id === '' || $client_secret === '') {
+            show_404();
+        }
+
+        $redirect_uri = site_url('auth/google_callback');
+
+        $auth_url = 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query([
+            'client_id' => $client_id,
+            'redirect_uri' => $redirect_uri,
+            'response_type' => 'code',
+            'scope' => 'openid email profile',
+            'access_type' => 'offline',
+            'prompt' => 'select_account',
+        ]);
+
+        $_SESSION['google_oauth_state'] = bin2hex(random_bytes(16));
+
+        header('Location: ' . $auth_url);
+        exit;    }
+
+    /**
+     * Google OAuth2 callback
+     */
+    public function google_callback()
+    {
+        if (is_logged_in()) {
+            redirect('dashboard');
+        }
+
+        $enabled = $this->settings->get('google_enabled');
+
+        if (!$enabled) {
+            show_404();
+        }
+
+        $client_id = $this->settings->get('google_client_id');
+        $client_secret = $this->settings->get('google_client_secret');
+
+        if ($client_id === '' || $client_secret === '') {
+            show_404();
+        }
+
+        // Verify state token
+        $state = $_GET['state'] ?? '';
+        $session_state = $_SESSION['google_oauth_state'] ?? '';
+
+        if ($state !== $session_state) {
+            $this->show('login', 'Log in', ['error' => 'Invalid state token.']);
+            return;
+        }
+
+        // Exchange authorization code for tokens
+        $code = $_GET['code'] ?? '';
+
+        $token_url = 'https://oauth2.googleapis.com/token';
+        $token_data = [
+            'client_id' => $client_id,
+            'client_secret' => $client_secret,
+            'code' => $code,
+            'grant_type' => 'authorization_code',
+            'redirect_uri' => site_url('auth/google_callback'),
+        ];
+
+        $options = [
+            'http' => [
+                'method' => 'POST',
+                'header' => 'Content-type: application/x-www-form-urlencoded',
+                'content' => http_build_query($token_data),
+            ],
+        ];
+
+        $context = stream_context_create($options);
+        $result = file_get_contents($token_url, false, $context);
+        $token_response = json_decode($result, true);
+
+        if (!$token_response || !isset($token_response['access_token'])) {
+            $this->show('login', 'Log in', ['error' => 'Failed to obtain Google tokens.']);
+            return;
+        }
+
+        $access_token = $token_response['access_token'];
+
+        // Get user info from Google
+        $user_info_url = 'https://www.googleapis.com/oauth2/v2/userinfo?access_token=' . $access_token;
+        $options = ['http' => ['method' => 'GET']];
+        $context = stream_context_create($options);
+        $result = file_get_contents($user_info_url, false, $context);
+        $user_info = json_decode($result, true);
+
+        if (!isset($user_info['email'])) {
+            $this->show('login', 'Log in', ['error' => 'Failed to get Google user email.']);
+            return;
+        }
+
+        $email = $user_info['email'];
+        $name = $user_info['name'] ?? '';
+        $picture = $user_info['picture'] ?? '';
+
+        // Check if user exists by email
+        $user = $this->user_model->find_by_email($email);
+
+        if (!$user) {
+            // Create new user with Google email
+            $password = password_hash(uniqid(), PASSWORD_DEFAULT);
+            $user_id = $this->user_model->create([
+                'name' => $name,
+                'email' => $email,
+                'password' => $password,
+                'role' => 'user',
+            ]);
+
+            $user = $this->user_model->find($user_id);
+        }
+
+        // Log in the user
+        $this->log_in_as($user);
+        $this->audit->event('login', 'auth', $user->id, $user->name.' ('.$user->email.')');
+
+        $redirect = $this->session->flashdata('redirect_after_login');
+        redirect($redirect ?: 'dashboard');
+    }
+
     /** Verify email with token */
     public function verify_email($id = null, $token = null)
     {
