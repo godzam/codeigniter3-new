@@ -205,6 +205,7 @@ class Installer
                 'email' => $v['admin_email'],
                 'password' => password_hash($v['admin_password'], PASSWORD_DEFAULT),
                 'role' => 'super_admin',
+                'email_verified_at' => $now,
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);

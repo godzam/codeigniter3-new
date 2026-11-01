@@ -22,6 +22,10 @@ final class Labels
             'login.unblocked' => ['Unblocked', 'success'],
             'install' => ['Installed', 'primary'],
             'export' => ['Exported', 'primary'],
+            'password.reset_requested' => ['Password reset asked', 'secondary'],
+            'password.reset' => ['Password reset', 'primary'],
+            'email.verified' => ['Email confirmed', 'success'],
+            'google.linked' => ['Google linked', 'primary'],
         ];
 
         if (isset($known[$action])) {

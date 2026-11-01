@@ -130,3 +130,41 @@ if (!function_exists('require_permission')) {
         }
     }
 }
+
+if (!function_exists('google_login_enabled')) {
+    /**
+     * Whether the "Continue with Google" button should be shown: the switch is on
+     * and both client keys are saved (Settings -> Accounts & e-mail).
+     */
+    function google_login_enabled()
+    {
+        return (bool) app_setting('google_enabled')
+            && trim((string) app_setting('google_client_id')) !== ''
+            && trim((string) app_setting('google_client_secret')) !== '';
+    }
+}
+
+if (!function_exists('google_login_button')) {
+    /**
+     * The button (and the "or" line above it) for the login and register pages. A plain
+     * link: the sign-in starts on the server, so no script is needed (and the strict
+     * Content-Security-Policy stays as it is).
+     */
+    function google_login_button($label = 'Continue with Google')
+    {
+        if (!google_login_enabled()) {
+            return '';
+        }
+
+        return '<div class="auth-or" role="separator"><span>or</span></div>'
+            .'<a href="'.htmlspecialchars(site_url('google/login'), ENT_QUOTES, 'UTF-8').'" class="btn btn-outline-secondary w-100 btn-google">'
+            .'<i class="bi bi-google me-2"></i>'.htmlspecialchars($label, ENT_QUOTES, 'UTF-8').'</a>';
+    }
+}
+
+if (!function_exists('password_reset_enabled')) {
+    function password_reset_enabled()
+    {
+        return (bool) app_setting('password_reset_enabled');
+    }
+}

@@ -19,6 +19,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * @property Loginguard $loginguard
  * @property Audit $audit
  * @property Settings $settings
+ * @property Mailer $mailer
  * @property CI_DB_query_builder $db
  */
 class Console extends CI_Controller
@@ -68,7 +69,7 @@ class Console extends CI_Controller
     {
         $this->load->database();
         $this->load->library('settings');
-        $removed = ['audit_logs' => 0, 'login_locks' => 0];
+        $removed = ['audit_logs' => 0, 'login_locks' => 0, 'user_tokens' => 0];
 
         $days = (int) $this->settings->get('audit_retention_days', 0);
         if ($days > 0 && $this->db->table_exists('audit_logs')) {
@@ -84,12 +85,47 @@ class Console extends CI_Controller
             });
         }
 
+        if ($this->db->table_exists('user_tokens')) {
+            // Links that expired, or were used, more than a week ago are of no use to anybody.
+            $removed['user_tokens'] = $this->delete_in_batches('user_tokens', function ($db) {
+                $db->where('expires_at <', date('Y-m-d H:i:s', time() - 7 * 86400));
+            });
+        }
+
         foreach ($removed as $table => $n) {
             echo str_pad($table, 12).' '.$n.' row(s) removed'.PHP_EOL;
         }
         if ($days === 0) {
             echo 'The audit log is kept forever (Settings -> Security -> "Keep the audit log for").'.PHP_EOL;
         }
+    }
+
+    /**
+     * Sends a test e-mail with the mail settings from .env, to see that verification and
+     * password-reset mails will arrive:
+     *
+     *   php index.php console mailtest you@example.com
+     */
+    public function mailtest($to = null)
+    {
+        $this->load->library('mailer');
+
+        if ($to === null || filter_var($to, FILTER_VALIDATE_EMAIL) === false) {
+            echo 'Usage: php index.php console mailtest you@example.com'.PHP_EOL;
+
+            return;
+        }
+
+        echo 'Transport: '.$this->mailer->transport().', from '.$this->mailer->from_name().' <'.$this->mailer->from_address().'>'.PHP_EOL;
+
+        if ($this->mailer->send($to, 'Test message', "If you can read this, the mail settings work.\n")) {
+            echo $this->mailer->transport() === 'log' ? 'Written to application/logs/mail-'.date('Y-m-d').'.log (nothing was sent).' : 'Sent to '.$to.'.';
+            echo PHP_EOL;
+
+            return;
+        }
+
+        echo 'Could not send. Check MAIL_PROTOCOL / SMTP_* in .env and application/logs for the reason.'.PHP_EOL;
     }
 
     /**

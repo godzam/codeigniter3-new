@@ -87,6 +87,55 @@ $config['app_settings'] = array(
 		),
 	),
 
+	'accounts' => array(
+		'label' => 'Accounts & e-mail',
+		'icon' => 'bi-envelope-check',
+		'fields' => array(
+			'email_verification_enabled' => array(
+				'label' => 'Require e-mail verification',
+				'type' => 'switch',
+				'default' => FALSE,
+				'help' => 'New accounts must click the link we e-mail before they can log in. Needs working e-mail (see the README, "Accounts & e-mail"); test it with: php index.php console mailtest you@example.com. Accounts that already exist count as verified.',
+			),
+			'password_reset_enabled' => array(
+				'label' => 'Allow "Forgot password?"',
+				'type' => 'switch',
+				'default' => FALSE,
+				'help' => 'Adds a link on the login page that e-mails a reset link (valid for 1 hour). Needs working e-mail.',
+			),
+			'email_from_name' => array(
+				'label' => 'Sender name',
+				'type' => 'text',
+				'default' => '',
+				'help' => 'Leave empty to use the application name.',
+			),
+			'email_from_address' => array(
+				'label' => 'Sender address',
+				'type' => 'text',
+				'default' => '',
+				'help' => 'Leave empty to use MAIL_FROM_ADDRESS from .env, or no-reply@your-host.',
+			),
+			'google_enabled' => array(
+				'label' => 'Sign in with Google',
+				'type' => 'switch',
+				'default' => FALSE,
+				'requires' => array('google_client_id', 'google_client_secret'),
+				'help' => 'Shows a "Continue with Google" button on the login and register pages. Create an OAuth client (type "Web application") in the Google Cloud console and add this exact redirect URI: your-site/google/callback (for example https://example.com/google/callback). Only addresses Google has verified are accepted.',
+			),
+			'google_client_id' => array(
+				'label' => 'Google client ID',
+				'type' => 'text',
+				'default' => getenv('GOOGLE_CLIENT_ID') ?: '',
+			),
+			'google_client_secret' => array(
+				'label' => 'Google client secret',
+				'type' => 'password',
+				'default' => getenv('GOOGLE_CLIENT_SECRET') ?: '',
+				'help' => 'Write-only: leave blank to keep the current one. It can also come from GOOGLE_CLIENT_SECRET in .env.',
+			),
+		),
+	),
+
 	'appearance' => array(
 		'label' => 'Appearance',
 		'icon' => 'bi-palette',
@@ -184,6 +233,11 @@ $config['app_settings'] = array(
 			),
 			'turnstile_on_register' => array(
 				'label' => 'Require it on the registration form',
+				'type' => 'switch',
+				'default' => TRUE,
+			),
+			'turnstile_on_forgot' => array(
+				'label' => 'Require it on the "Forgot password?" form',
 				'type' => 'switch',
 				'default' => TRUE,
 			),

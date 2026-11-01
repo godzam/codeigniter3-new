@@ -32,6 +32,27 @@ class User_model extends CI_Model
         return $this->db->get_where($this->table, ['email' => $email])->row();
     }
 
+    public function find_by_google_sub($sub)
+    {
+        return $this->db->get_where($this->table, ['google_sub' => (string) $sub])->row();
+    }
+
+    /**
+     * Whether this install can tell verified from unverified addresses
+     * (false until the account-security migration has run).
+     */
+    public function has_verification()
+    {
+        return $this->db->field_exists('email_verified_at', $this->table);
+    }
+
+    public function update($id, array $data)
+    {
+        $data['updated_at'] = date('Y-m-d H:i:s');
+
+        return $this->db->where('id', (int) $id)->update($this->table, $data);
+    }
+
     public function create(array $data)
     {
         $data['created_at'] = date('Y-m-d H:i:s');
