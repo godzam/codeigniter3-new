@@ -32,4 +32,6 @@
 	<button type="submit" class="btn btn-primary btn-submit w-100">Create account <i class="bi bi-arrow-right ms-1"></i></button>
 <?php echo form_close() ?>
 
+<?php echo google_login_button('Sign up with Google') ?>
+
 <p class="auth-alt">Already have an account? <a href="<?php echo site_url('login') ?>">Log in</a></p>
