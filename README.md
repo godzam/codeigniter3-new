@@ -1,4 +1,4 @@
-# CodeIgniter 3 Starter — PHP 8.4+, HMVC, DevelBar
+# CodeIgniter 3 Starter — PHP 8.2+, HMVC, DevelBar
 
 ![CI](https://github.com/godzam/codeigniter3-new/actions/workflows/ci.yml/badge.svg)
 ![PHP](https://img.shields.io/badge/PHP-8.2%E2%80%938.5-777bb4)
@@ -19,6 +19,8 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 - [Authentication](#authentication)
 - [Accounts & e-mail (verification, password reset, Google)](#accounts--e-mail-verification-password-reset-google)
 - [Roles & permissions](#roles--permissions)
+- [Tables (DataTables, server-side)](#tables-datatables-server-side)
+- [CRUD generator](#crud-generator)
 - [Menu builder & page builder](#menu-builder--page-builder)
 - [Login security & audit log](#login-security--audit-log)
 - [Exports](#exports)
@@ -43,18 +45,25 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 | **HMVC (Modular Extensions)** | Instead of one flat `application/controllers` + `application/models` + `application/views`, group each feature into its own self-contained module: `application/modules/blog/{controllers,models,views}`. Modules can even call each other. A working example ships in `application/modules/example/`. |
 | **Bootstrap 5 template & theming** | Public, auth, and admin layouts (Bootstrap 5.3, Bootstrap Icons, SweetAlert2 — all vendored, no CDN). An admin **Settings** page controls the primary/secondary colors, light/dark/auto mode, corner roundness, font, sidebar and navbar style, app name and logo — stored in the database, with a live preview. |
 | **Roles & permissions (RBAC)** | Create, edit and delete roles from the admin UI, and tick which permissions each one holds. Permissions are declared per module (`module.action`) and checked with `can()` / `require_permission()`. `super_admin` is the built-in top role: every permission, can't be edited, deleted or created again. |
+| **CRUD generator** | Admin → Generator (super admin) turns a form into a working module: a table, a server-side list, add/edit in a modal, delete, per-module permissions and a menu entry. Choose which of add / edit / delete the module has, per-field validation, uploads with compression, and optional CSV / Excel / PDF export. |
+| **Server-side DataTables** | Search, sort and paging happen in SQL, mobile first, counting capped for big tables. One helper for every list. |
+| **Login security & audit log** | 5 wrong passwords block the IP address and the account for 1 hour, 3 blocks in a row for 1 day; admins (or the console) lift blocks. Every add / edit / delete, sign-in and block is written to a read-only audit log with the content, secrets hidden. |
+| **Accounts & e-mail** | Optional e-mail verification, "Forgot password?" and Sign in with Google (OpenID Connect with PKCE), all off until switched on in Settings. One-time links are random and stored hashed. |
+| **Menu builder & page builder** | Build the admin sidebar (links, dropdowns, sections, an icon picker) and public pages from blocks at `/page/{address}`, without editing code. Text is sanitised; raw HTML needs its own permission. |
+| **One-click installer** | `/install` creates the database, runs the migrations, saves the settings and the first super admin. |
+| **Built to grow** | Shared sessions and cache (database or Redis), real client IP behind a load balancer, `/health/ready`, a migration lock, log retention (`console prune`), stderr logging, and limits that keep big exports and lists cheap. See [Big data & several servers](#big-data--several-servers). |
 | **Cloudflare Turnstile** | Optional CAPTCHA on the login and register forms, switched on and configured from Settings → Security (site key, secret key, per-form switches, widget theme and size). Fails closed if Cloudflare can't be reached. |
-| **Authentication** | Email/password register, login, and logout (`application/modules/auth`), password hashing, session-backed `is_logged_in()`/`require_login()`/`require_role()` helpers, and per-IP login rate limiting. Not a full framework — a real, working starting point for your own auth. |
+| **Authentication** | Email/password register, login, and logout (`application/modules/auth`), password hashing, session-backed `is_logged_in()`/`require_login()`/`require_role()` helpers, and login blocking per IP address and per account. Not a full framework — a real, working starting point for your own auth. |
 | **Database migrations & seeders** | CI3's built-in `Migration` library, enabled and wired to a CLI runner, plus a small seeder pattern CI3 doesn't ship with (`application/seeds/`). |
 | **DevelBar** | A toolbar docked to the bottom of the page (development only) showing benchmarks, database queries, session data, loaded config, and a per-view memory breakdown. |
 | **`.env` support** | Optional — every setting that reads from it has a hardcoded fallback, so nothing breaks if `.env` doesn't exist. |
-| **Security defaults** | CSRF protection on, a conservative security-headers hook (CSP, X-Frame-Options, etc.), rate limiting available for any endpoint that needs it. |
+| **Security defaults** | CSRF protection on, a conservative security-headers hook (CSP, X-Frame-Options, etc.), rate limiting available for any endpoint that needs it (shared across servers with `CACHE_DRIVER=redis`). |
 | **Static analysis & style** | PHPStan (level 3, scoped to code this project owns) and PHP-CS-Fixer (PSR-12), both wired as `composer` scripts and in CI. |
 | **Tests** | PHPUnit for the application layer — real unit tests plus HTTP-level feature tests that boot the app as a subprocess — separate from CodeIgniter's own framework test suite in `tests/`. |
 | **Custom error handling** | CI4/Laravel-style: a detailed exception page in development (stack trace with code snippets, request data, editor links), clean per-status-code error pages in production instead of a blank screen, JSON errors for API requests, and `abort(404)` / `abort_if()` / `abort_unless()` helpers. |
 | **Structured logging** | An opt-in Monolog-backed `Logger` library alongside CI3's native `log_message()`, for when you want multiple handlers or structured context. |
-| **`/health` endpoint** | A JSON status endpoint for load balancers/uptime monitors. |
-| **Docker** | `Dockerfile` + `docker-compose.yml` (app + MySQL + phpMyAdmin) for a one-command local environment. |
+| **`/health` endpoints** | `/health` (alive) and `/health/ready` (real query, shared cache, writable folders) as JSON for load balancers and uptime monitors. |
+| **Docker** | `Dockerfile` + `docker-compose.yml` (app + MySQL + phpMyAdmin, and Redis with `--profile ha`) for a one-command local environment. |
 | **CI** | GitHub Actions: boots the app and hits real routes on PHP 8.2–8.4, plus separate PHPStan/CS-Fixer/PHPUnit jobs. Dependabot keeps dependencies current. |
 
 None of the vendored pieces are exotic — HMVC and DevelBar are the same libraries ([wiredesignz HMVC](https://github.com/5112n4/wiredesignz-codeigniter-modular-extensions) + [DevelBar](https://github.com/JCSama/CodeIgniter-develbar)) that have powered plenty of CodeIgniter 3 apps for years — just vendored in, patched for current PHP, and verified working together, with modern tooling and a real (if minimal) auth system layered on top.
@@ -118,46 +127,54 @@ application/
   config/
     database.php.example    — copy to database.php and fill in your credentials
     production/              — example of CI3's environment-specific config overrides
-  core/
-    MY_Loader.php            — extends MX_Loader (HMVC) + per-view memory tracking for DevelBar
-    MY_Router.php            — extends MX_Router (HMVC)
-  controllers/
-    Console.php              — CLI-only: migrate, seed
-    Health.php                — GET /health
-  config/
     app_settings.php         — the settings schema (fields on the Settings page)
-    menu.php                 — admin sidebar items
+    permissions.php          — core permissions (modules add their own)
+    menu.php                 — admin sidebar items (the menu builder adds to them)
+    routes.php               — short URLs for the modules
+    email.php, redis.php     — mail and Redis settings, read from .env
+  core/
+    MY_Loader.php, MY_Router.php — HMVC + per-view memory tracking for DevelBar
+    MY_Exceptions.php          — the error pages
+    MY_Log.php                  — log_message() to stderr with LOG_CHANNEL=stderr
+  controllers/
+    Console.php              — CLI-only: migrate, seed, unblock, prune, mailtest
+    Health.php                — GET /health and /health/ready
   helpers/
-    auth_helper.php           — is_logged_in(), current_user(), can(), require_permission(), require_login(), require_role()
-    theme_helper.php           — theme CSS variables, asset_url(), flash(), menu_items()
+    auth_helper.php           — is_logged_in(), current_user(), can(), require_permission(), google_login_button() ...
+    theme_helper.php           — theme CSS variables, asset_url(), flash(), menu_items(), menu_href()
+    datatable_helper.php       — datatable_table()
   views/layouts/                — public / auth / admin layouts
   libraries/
-    Settings.php                — DB-backed settings with defaults
-    Template.php                 — $this->template->render('view', $data, 'admin')
-    Turnstile.php                 — Cloudflare Turnstile widget + server-side check
-    Rbac.php                       — current role, permission checks, role/user data access
-    Ratelimiter.php            — fixed-window rate limiting (file cache, no Redis needed)
-    Logger.php                  — opt-in Monolog logging
-    Seeder.php                   — seeder runner (application/seeds/*_seeder.php)
+    Settings, Template, Turnstile — settings, layouts, CAPTCHA
+    Rbac                          — current role, permission checks, role/user data access
+    Datatable                      — server-side DataTables (paging, search, sort, export chunks)
+    Crud_store, Crud_rules         — the CRUD generator's storage and validation rules
+    Loginguard, Ratelimiter        — login blocking, fixed-window rate limiting
+    Audit                           — the audit log (created / updated / deleted / event)
+    Mailer, Accountlinks, Usertokens — e-mail, the verification and reset links, their tokens
+    Sharedcache                      — cache shared between servers (file / redis / memcached)
+    Installer, Seeder, Logger        — one-click install, seeders, opt-in Monolog
   hooks/
     SecurityHeaders.php          — CSP, X-Frame-Options, etc.
   migrations/                     — CI3 migrations (enabled)
   seeds/                           — seeder classes
   modules/
     example/                       — working reference HMVC module, safe to delete
-    auth/                            — register/login/logout
-    dashboard/                        — landing page after login (admin layout)
-    settings/                          — admin Settings page (/admin/settings)
-    users/                              — user list + role assignment (/admin/users)
-    roles/                               — role CRUD + permission matrix (/admin/roles)
-  src/                                — Composer-autoloaded App\ namespace for plain PHP classes
+    auth/                            — register / login / logout, e-mail links (Account), Google (Google_auth)
+    dashboard/, settings/, users/, roles/ — landing page, Settings, user list, roles + permission matrix
+    generator/, crud/                 — the CRUD generator (super admin) and the pages it makes (/admin/c/{key})
+    security/, audit/                  — blocked IPs/users, audit log viewer
+    menus/, pages/                      — menu builder, page builder
+    install/                            — the /install wizard
+  src/                                — Composer-autoloaded App\ namespace: plain, unit-tested PHP (Auth, Audit, Crud,
+                                        DataTables, Export, Install, Menus, Page, Security, Settings, Theme ...)
   third_party/
     MX/                                — HMVC (Modular Extensions) library
     DevelBar/                           — dev toolbar
 system/
   core/*.php, database/DB_driver.php, libraries/Driver.php
                                          — patched with #[AllowDynamicProperties] for PHP 8.2+
-assets/                                  — css/, js/, and vendor/ (Bootstrap, Bootstrap Icons, SweetAlert2)
+assets/                                  — css/, js/ and vendor/ (Bootstrap, Bootstrap Icons + icons.json, SweetAlert2, DataTables)
 tests-app/                               — PHPUnit for application code (not CI3's own tests/)
 phpstan.neon.dist, .php-cs-fixer.dist.php — static analysis / style config
 Dockerfile, docker-compose.yml            — containerized dev environment
@@ -299,7 +316,8 @@ Bootstrap, Bootstrap Icons, and SweetAlert2 are vendored in `assets/vendor/` (no
 - `GET`/`POST /register`, `GET`/`POST /login`, `GET /logout` (short URLs — see `application/config/routes.php`)
 - Passwords hashed with `password_hash()`/`password_verify()`
 - Wrong passwords are counted per IP address and per account and lead to a temporary block (see [Login security & audit log](#login-security--audit-log)); if the security tables are missing it falls back to 5 attempts per 60 seconds per IP (`application/libraries/Ratelimiter.php`)
-- A single `role` column on `users` (seeded default: `user`; the seeded admin gets `admin`) for basic access control
+- A single `role` column on `users` (new sign-ups get the default role; the seeded and installer-created account is `super_admin`); what a role may do is set on the Roles page
+- Optional e-mail verification, password reset and Google sign-in: see [Accounts & e-mail](#accounts--e-mail-verification-password-reset-google)
 
 Use it from any controller via `application/helpers/auth_helper.php` (autoloaded — no `$this->load->helper()` needed):
 
@@ -311,7 +329,7 @@ current_user();                // array or null: id, name, email, role
 has_role('admin');             // bool
 ```
 
-The `users` table comes from `application/migrations/20260813120000_create_users_table.php` — run `php index.php console migrate` to create it. This is intentionally minimal (no password reset, no email verification, no OAuth) — extend `application/modules/auth/controllers/Auth.php` for anything beyond that.
+The `users` table comes from `application/migrations/20260813120000_create_users_table.php` — run `php index.php console migrate` to create it. Login and registration live in `Auth.php`; the e-mail-link flows are in `Account.php` and Google in `Google_auth.php` (same module). Extend those for anything beyond that.
 
 ## Accounts & e-mail (verification, password reset, Google)
 
@@ -343,6 +361,7 @@ Each user has **one role**; each role holds a set of **permissions**. Both are m
 - **`super_admin` is the top role.** It is built in, always holds every permission (including ones added later), and **cannot be created again, edited or deleted**. Anyone below it is up to you. There must always be at least one super admin, and only a super admin can grant, take away, or change the `super_admin` role.
 - **One role is the default**, given to new sign-ups (set it with the switch on the role form). It can't be deleted, and a role that still has users can't be deleted either: move them first.
 - **Admins can't escalate.** Someone with `roles.edit` can only tick or untick permissions they hold themselves (the others show greyed out, and the server ignores them), and nobody but a super admin can change their own role.
+- **Module permissions.** Every generated module registers its own (`<key>.view`, `.create`, `.edit`, `.delete`, and `.export` when it offers exports) the moment it exists, and only the ones the module actually has are listed. A few permissions (`pages.html`, raw HTML in pages) are deliberately left out of the `admin` role, even on a fresh install, because they are as powerful as a developer's access.
 - **Changes apply immediately.** The role is read from the database on every request, so editing a role or reassigning a user takes effect on their next click, with no re-login.
 
 ### Using permissions in code
@@ -600,7 +619,7 @@ If the installer cannot write `application/config/database.php` (folder not writ
 A privacy-friendly CAPTCHA for the login and register forms. It is **off by default**; nothing changes until you turn it on.
 
 1. In the Cloudflare dashboard, create a Turnstile site and copy its **site key** and **secret key**.
-2. Log in as an admin → **Settings → Security**, switch Turnstile on, paste both keys, and choose which forms use it (login, register), plus the widget theme and size. Saving with Turnstile on but a key missing is rejected.
+2. Log in as an admin → **Settings → Security**, switch Turnstile on, paste both keys, and choose which forms use it (login, register, forgot password), plus the widget theme and size. Saving with Turnstile on but a key missing is rejected.
 
 The keys can also come from the environment (`TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` in `.env`) as defaults; a value saved in Settings wins. The secret is never printed back into the page.
 
@@ -661,11 +680,12 @@ To go back to CI3's stock error handling, remove the `require_once APPPATH.'core
 CodeIgniter 3 has no built-in artisan-like CLI. `application/controllers/Console.php` is the idiomatic CI3 way to get one — a normal controller invoked from the command line instead of over HTTP, refusing to run any other way:
 
 ```bash
-php index.php console migrate          # run pending migrations
+php index.php console migrate          # run pending migrations (takes a database lock, so several servers can deploy at once)
 php index.php console seed             # run every application/seeds/*_seeder.php
 php index.php console seed users       # run one seeder by name
 php index.php console unblock <ip|email|all>   # lift a login block (see Login security)
-php index.php console prune            # delete old audit rows / idle lock rows (run it nightly from cron)
+php index.php console prune            # delete old audit rows / idle locks / old e-mail tokens (run it nightly from cron)
+php index.php console mailtest you@example.com   # send a test e-mail with the .env mail settings
 ```
 
 Add a migration with CI3's normal `CI_Migration` API in `application/migrations/`. Add a seeder by creating `application/seeds/<name>_seeder.php` with a class extending `CI_Seeder` and implementing `run()` — see `application/seeds/users_seeder.php`.
@@ -698,7 +718,7 @@ CodeIgniter 3's dynamic "super object" pattern means PHPStan needs a bit of help
 docker compose up --build
 ```
 
-Starts the app on http://localhost:8080, MySQL on `3306`, and phpMyAdmin on http://localhost:8081 (user `root`, password `secret` — this is a local dev default, change it for anything beyond your own machine). The container copies `database.php.example` to `database.php` automatically and reads connection details from `docker-compose.yml`'s `environment:` block via the same `getenv()` fallback pattern `.env` uses locally — no extra config needed to get a working database inside the container.
+Starts the app on http://localhost:8080, MySQL on `3306`, and phpMyAdmin on http://localhost:8081 (add `--profile ha` to also start Redis, then set `SESS_DRIVER=redis`, `CACHE_DRIVER=redis` and `REDIS_HOST=redis`) (user `root`, password `secret` — this is a local dev default, change it for anything beyond your own machine). The container copies `database.php.example` to `database.php` automatically and reads connection details from `docker-compose.yml`'s `environment:` block via the same `getenv()` fallback pattern `.env` uses locally — no extra config needed to get a working database inside the container.
 
 Run migrations/seeders inside the running container:
 ```bash
@@ -745,8 +765,17 @@ Make sure `application/config/database.php` exists (step 2 of [Quick start](#qui
 **DevelBar isn't showing up.**
 Check `ENVIRONMENT` — it only shows in `development` by default.
 
-**Login says "Too many attempts."**
-That's the rate limiter (5 attempts/60s per IP) — wait it out, or clear `application/cache/` locally.
+**Login says "Too many failed login attempts."**
+That's [login blocking](#login-security--audit-log): 5 wrong passwords block the IP address and the account for an hour. An admin lifts it at Admin → Login security, or run `php index.php console unblock <ip|email|all>`. Behind a load balancer or CDN, set `TRUSTED_PROXIES` in `.env`, otherwise every visitor shares the balancer's address and one person's mistakes block everybody.
+
+**The Export menu has no Excel option / "not installed".**
+Excel needs PHP's `zip` extension and PDF needs `dompdf` (`composer install`). The generator shows the format greyed out when it is missing.
+
+**Verification, reset or Google sign-in does nothing.**
+Run `php index.php console migrate` first, then check the mail settings with `php index.php console mailtest you@example.com`. For Google, the redirect URI registered in the Google Cloud console must be exactly `https://your-site/google/callback`.
+
+**A page I made is a 404 / the menu builder shows no tables.**
+The menu and page tables come from migrations: `php index.php console migrate`. Drafts are only visible to people who may edit pages.
 
 **I want clean URLs without `index.php` in them.**
 Already set up — a root `.htaccess` handles the rewrite, and `application/config/config.php` already has `index_page` set accordingly. If your server doesn't have `mod_rewrite`, set `$config['index_page'] = 'index.php'` there instead (see the comment in `.htaccess`).
