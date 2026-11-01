@@ -46,8 +46,8 @@ class Google_auth extends MX_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->model('user_model');
-        $this->load->library(['session', 'loginguard']);
+        // No database work here: with the feature off these URLs must be a plain 404 (see client()).
+        $this->load->library('session');
         $this->load->helper(['url']);
     }
 
@@ -191,8 +191,14 @@ class Google_auth extends MX_Controller
         $id = trim((string) $this->settings->get('google_client_id'));
         $secret = trim((string) $this->settings->get('google_client_secret'));
 
-        if (!$this->settings->get('google_enabled') || $id === '' || $secret === '' || !$this->user_model->has_verification()) {
+        if (!$this->settings->get('google_enabled') || $id === '' || $secret === '') {
             show_404();
+        }
+
+        $this->load->model('user_model');
+        $this->load->library('loginguard');
+        if (!$this->user_model->has_verification()) {
+            show_404(); // the account-security migration has not run
         }
 
         // Test servers only: point the flow at a fake identity provider.

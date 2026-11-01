@@ -41,9 +41,19 @@ class Account extends MX_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->model('user_model');
-        $this->load->library(['form_validation', 'ratelimiter', 'session', 'usertokens', 'accountlinks']);
+        // Nothing here may touch the database: every page of this controller must answer
+        // (with a 404) on an install where the features are off, with or without a database.
+        $this->load->library(['form_validation', 'ratelimiter', 'session']);
         $this->load->helper(['form', 'url']);
+    }
+
+    /**
+     * The database-backed pieces, loaded only once a feature is known to be on.
+     */
+    protected function load_account_tools()
+    {
+        $this->load->model('user_model');
+        $this->load->library(['usertokens', 'accountlinks']);
     }
 
     // ------------------------------------------------------------------
@@ -151,6 +161,13 @@ class Account extends MX_Controller
     public function verify($token = '')
     {
         $this->private_page();
+        if (!$this->settings->get('email_verification_enabled')) {
+            // Verification was switched off after the link was sent: nothing to confirm any more.
+            $this->show('link_invalid', 'Link not valid', ['what' => 'confirmation']);
+
+            return;
+        }
+        $this->load_account_tools();
         if (!$this->usertokens->available()) {
             show_404();
         }
@@ -220,7 +237,11 @@ class Account extends MX_Controller
      */
     protected function feature($setting)
     {
-        if (!$this->settings->get($setting) || !$this->usertokens->available()) {
+        if (!$this->settings->get($setting)) {
+            show_404(); // before any database work
+        }
+        $this->load_account_tools();
+        if (!$this->usertokens->available()) {
             show_404();
         }
         if (is_logged_in()) {
