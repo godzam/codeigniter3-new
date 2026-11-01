@@ -51,7 +51,7 @@
 			var toast = el.getAttribute('data-confirm-toast');
 			if (toast) { var t = toast.split('|'); window.App.toast(t[0], t.slice(1).join('|')); }
 			else if (el.tagName === 'A') { window.location.href = el.href; }
-			else if (el.form) { el.form.removeAttribute('data-confirm'); el.form.requestSubmit ? el.form.requestSubmit(el) : el.form.submit(); }
+			else if (el.form) { el.form.removeAttribute('data-confirm'); el.form.requestSubmit ? el.form.requestSubmit(el.type === 'submit' ? el : undefined) : el.form.submit(); }
 		});
 	});
 	document.addEventListener('submit', function (e) {
