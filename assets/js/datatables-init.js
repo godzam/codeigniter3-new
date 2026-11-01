@@ -14,7 +14,7 @@
 	var narrow = window.matchMedia('(max-width: 575.98px)').matches;
 
 	document.querySelectorAll('table[data-datatable]').forEach(function (el) {
-		var order = (el.getAttribute('data-order') || '').split(',');
+		var order = (el.getAttribute('data-initial-order') || '').split(',');
 		var columns = Array.prototype.map.call(el.querySelectorAll('thead th'), function (th) {
 			return {
 				orderable: th.getAttribute('data-orderable') !== 'false',

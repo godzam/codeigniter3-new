@@ -29,7 +29,9 @@ $render_items = static function (array $items) use (&$render_items) {
 			continue;
 		}
 
-		echo '<li class="nav-item"><a class="nav-link'.(!empty($item['active']) ? ' active' : '').'" href="'.site_url($item['url'] ?? '').'" title="'.htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8').'">'.$icon.$label.'</a></li>';
+		$href = menu_href($item['url'] ?? '');
+		$external = \App\Page\Links::isAbsolute((string) ($item['url'] ?? '')); // as typed: pages of this site are resolved to full addresses too
+		echo '<li class="nav-item"><a class="nav-link'.(!empty($item['active']) ? ' active' : '').'" href="'.htmlspecialchars($href, ENT_QUOTES, 'UTF-8').'"'.($external ? ' target="_blank" rel="noopener noreferrer"' : '').' title="'.htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8').'">'.$icon.$label.'</a></li>';
 	}
 };
 ?><!DOCTYPE html>

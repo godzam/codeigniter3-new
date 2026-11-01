@@ -19,6 +19,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 - [Authentication](#authentication)
 - [Accounts & e-mail (verification, password reset, Google)](#accounts--e-mail-verification-password-reset-google)
 - [Roles & permissions](#roles--permissions)
+- [Menu builder & page builder](#menu-builder--page-builder)
 - [Login security & audit log](#login-security--audit-log)
 - [Exports](#exports)
 - [Big data & several servers](#big-data--several-servers)
@@ -564,6 +565,21 @@ The starter is meant to grow into a large application, so these are built in rat
 - **Stateless app servers:** nothing else is kept on the server's disk besides the above (settings, roles, menus and modules live in the database).
 
 Not included (so you know): database read replicas / sharding, a job queue, S3 storage, and caching of settings/permissions (they are small queries on every request; role changes apply immediately because nothing is cached).
+
+## Menu builder & page builder
+
+Both are under the **Content** section of the admin sidebar and need `php index.php console migrate`. The `admin` role receives their permissions (except `pages.html`, below); `super_admin` has everything.
+
+**Menu builder** (`admin/menus`, permissions `menus.*`). Builds the admin sidebar without editing `application/config/menu.php`, stored in the database so changes show up at once. Three kinds of entry: a **link**, a **dropdown** (no address of its own; it opens the links put inside it, and an empty one is not shown) and a **section** heading. Entries nest up to three levels, are ordered by dragging or with the arrow buttons, and can each be limited to a permission or to super admins (items inside a dropdown follow their own permission). The items from `menu.php` always stay; the built ones are added after them.
+- **Icon picker.** The icon field has a *Choose* button that opens a searchable grid of all ~2,050 Bootstrap Icons (full screen on phones); typing a class by hand still works. The same picker is on the module generator's menu-icon field. To use it on your own form: `<input type="text" name="icon" data-icon-picker="<?= asset_url('vendor/bootstrap-icons/icons.json') ?>">` and load `assets/js/icon-picker.js`. (`icons.json` is generated from the vendored CSS; regenerate it when you update the icon font.)
+- A link is a page of this site (`dashboard`, `page/about`) or an `http(s)://`, `mailto:` or `tel:` address. Anything else (`javascript:`, `data:`, `//host`, addresses with spaces) is refused, and it is checked again when the sidebar is drawn.
+- A parent must exist, be a link or a dropdown, and not be the item itself or one of its own descendants; a section is always top level and cannot hold items.
+
+**Page builder** (`admin/pages`, permissions `pages.*`). Builds public pages from blocks (hero, text, features, call to action, image, custom HTML), served at `/page/{address}`. The list is a server-side DataTable. A draft is a 404 for the public and a preview (not cacheable) for editors.
+- Text is escaped. The **Text block** may contain basic formatting; it is rebuilt from an allow-list (`App\Page\Html`): only `p br strong em b i u ul ol li h2 h3 h4 blockquote code pre span hr a`, no attributes except a safe `href` on links (which get `rel="noopener noreferrer"`), scripts and styles removed.
+- Link and image addresses go through `App\Page\Links`: `javascript:`, `data:` and similar never become a link; pages of this site are turned into full addresses, so `register` works from `/page/about`.
+- The **Custom HTML** block is raw on purpose and can run scripts for every visitor, so adding or changing one needs the separate permission **`pages.html`**. It is not in the `admin` role (not even on a fresh install); an editor without it can keep the HTML blocks a page already has, unchanged, but not add or edit one. Give it only to people you trust as much as a developer.
+- Colours are optional `#hex` values; empty uses the theme colour.
 
 ## One-click installer
 

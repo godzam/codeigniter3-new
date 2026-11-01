@@ -58,6 +58,7 @@ class Migration_Create_roles_tables extends CI_Migration
         $config = array();
         include APPPATH.'config/permissions.php';
         $defaults = $config['default_role_permissions'] ?? array();
+        $notInWildcard = $config['not_in_wildcard'] ?? array();
 
         $files = array_merge(array(APPPATH.'config/permissions.php'), glob(APPPATH.'modules/*/config/permissions.php') ?: array());
         $all = PermissionRegistry::fromFiles($files)->keys();
@@ -67,7 +68,7 @@ class Migration_Create_roles_tables extends CI_Migration
             if (!$role) {
                 continue;
             }
-            $granted = in_array('*', $permissions, true) ? $all : array_intersect($permissions, $all);
+            $granted = in_array('*', $permissions, true) ? array_diff($all, $notInWildcard) : array_intersect($permissions, $all);
             foreach ($granted as $permission) {
                 $this->db->insert('role_permissions', array('role_id' => $role->id, 'permission' => $permission));
             }

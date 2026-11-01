@@ -219,7 +219,7 @@ class Module_generator extends MX_Controller
         $this->template
             ->set_title($module === null ? 'New module' : 'Edit '.$module['title'])
             ->set_breadcrumbs(['Home' => '', 'Generator' => 'admin/generator', ($module === null ? 'New module' : 'Edit') => null])
-            ->add_foot('<script src="'.asset_url('js/generator.js').'"></script>')
+            ->add_foot('<script src="'.asset_url('js/icon-picker.js').'"></script><script src="'.asset_url('js/generator.js').'"></script>')
             ->render('form', [
                 'module' => $module,
                 'values' => $values,

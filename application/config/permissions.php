@@ -88,3 +88,9 @@ $config['default_role_permissions'] = array(
 	'admin' => array('*'),
 	'user' => array(),
 );
+
+/*
+| Permissions that '*' above does NOT include: they are as powerful as a developer's
+| access, so only super_admin has them until somebody grants them on the Roles page.
+*/
+$config['not_in_wildcard'] = array('pages.html');

@@ -257,10 +257,26 @@ if (!function_exists('menu_items')) {
      */
     function menu_items()
     {
-        /** @var CI_Controller&object{crud_store: Crud_store} $CI */
+        /** @var CI_Controller&object{crud_store: Crud_store, menu_model: Menu_model} $CI */
         $CI = &get_instance();
         $CI->config->load('menu', true, true);
         $items = $CI->config->item('menu', 'menu') ?: [];
+
+        // Items built with Admin -> Menu builder (application/modules/menus), merged after the
+        // file-based ones. Quiet and guarded: a missing table or an unreadable row must never
+        // take the sidebar (or the page) down.
+        try {
+            if (!isset($CI->menu_model)) {
+                $CI->load->model('menus/menu_model', 'menu_model');
+            }
+            $built = $CI->menu_model->sidebar_items();
+            if ($built !== []) {
+                $items = array_merge($items, $built);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'Menu builder items skipped: '.get_class($e).': '.$e->getMessage());
+        }
+
         // Modules made with the CRUD generator (each already checked against the user's permissions).
         $modules = $CI->crud_store->menu_entries();
         if ($modules !== []) {
@@ -367,5 +383,19 @@ if (!function_exists('brand_mark')) {
         }
 
         return '<span class="brand-mark" aria-hidden="true">'.htmlspecialchars(mb_strtoupper(mb_substr((string) app_setting('app_name'), 0, 1)), ENT_QUOTES, 'UTF-8').'</span>';
+    }
+}
+
+if (!function_exists('menu_href')) {
+    /**
+     * The address of a sidebar entry, ready to put inside href="...": a page of this site goes
+     * through site_url(), an http(s)/mailto/tel address stays as it is, and anything else
+     * (javascript:, data:, ...) becomes "#". Not escaped: wrap it in htmlspecialchars().
+     */
+    function menu_href($url)
+    {
+        $resolved = \App\Page\Links::resolve((string) $url, 'site_url');
+
+        return $resolved ?? '#';
     }
 }

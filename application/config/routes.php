@@ -104,3 +104,19 @@ $route['admin/security/unblock/(\d+)'] = 'security/login_security/unblock/$1';
 $route['admin/audit'] = 'audit/audit_log/index';
 $route['admin/audit/data'] = 'audit/audit_log/data';
 $route['admin/audit/(\d+)'] = 'audit/audit_log/show/$1';
+
+// Menu builder (application/modules/menus): the admin sidebar, built without touching menu.php.
+$route['admin/menus'] = 'menus/menu_builder/index';
+$route['admin/menus/create'] = 'menus/menu_builder/create';
+$route['admin/menus/edit/(\d+)'] = 'menus/menu_builder/edit/$1';
+$route['admin/menus/delete/(\d+)'] = 'menus/menu_builder/delete/$1';
+$route['admin/menus/reorder'] = 'menus/menu_builder/reorder';
+
+// Page builder (application/modules/pages): content pages served at /page/{address}.
+$route['admin/pages'] = 'pages/pages/index';
+$route['admin/pages/data'] = 'pages/pages/data';
+$route['admin/pages/create'] = 'pages/pages/create';
+$route['admin/pages/edit/(\d+)'] = 'pages/pages/edit/$1';
+$route['admin/pages/delete/(\d+)'] = 'pages/pages/delete/$1';
+$route['page/([a-z0-9][a-z0-9-]{0,149})'] = 'pages/pages/view/$1';
+

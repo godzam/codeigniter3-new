@@ -77,7 +77,7 @@ if (!function_exists('datatable_table')) {
             $attrs['data-filters'] = (string) $options['filters'];
         }
         if (isset($options['order'])) {
-            $attrs['data-order'] = (int) $options['order'][0].','.(strtolower((string) ($options['order'][1] ?? 'asc')) === 'desc' ? 'desc' : 'asc');
+            $attrs['data-initial-order'] = (int) $options['order'][0].','.(strtolower((string) ($options['order'][1] ?? 'asc')) === 'desc' ? 'desc' : 'asc');
         }
 
         $html = '<table';
