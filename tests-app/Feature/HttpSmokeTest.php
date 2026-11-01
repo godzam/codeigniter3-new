@@ -130,6 +130,21 @@ final class HttpSmokeTest extends TestCase
         }
     }
 
+    public function testAccountPagesDoNotExistUntilTheirSettingsAreOn(): void
+    {
+        $client = new Client(['base_uri' => self::$baseUri, 'http_errors' => false]);
+
+        // Forgot password, Google sign-in and e-mail verification are all off by default.
+        foreach (['/forgot-password', '/google/login', '/google/callback', '/reset-password/'.str_repeat('a', 64)] as $path) {
+            $this->assertSame(404, $client->get($path)->getStatusCode(), $path);
+        }
+        // A link that is not even shaped like a token never reaches a controller.
+        $this->assertSame(404, $client->get('/reset-password/short')->getStatusCode());
+        // Nothing to resend while verification is off: a redirect to the login page (not followed here).
+        $noFollow = new Client(['base_uri' => self::$baseUri, 'http_errors' => false, 'allow_redirects' => false]);
+        $this->assertContains($noFollow->get('/resend-verification')->getStatusCode(), [301, 302, 303, 307, 308]);
+    }
+
     public function testUnknownRouteRendersCustom404Page(): void
     {
         $client = new Client(['base_uri' => self::$baseUri, 'http_errors' => false]);

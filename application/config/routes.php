@@ -60,6 +60,12 @@ $route['install'] = 'install/install/index';
 $route['login'] = 'auth/login';
 $route['register'] = 'auth/register';
 $route['logout'] = 'auth/logout';
+$route['forgot-password'] = 'auth/account/forgot';
+$route['reset-password/([a-f0-9]{64})'] = 'auth/account/reset/$1';
+$route['verify-email/([a-f0-9]{64})'] = 'auth/account/verify/$1';
+$route['resend-verification'] = 'auth/account/resend';
+$route['google/login'] = 'auth/google_auth/login';
+$route['google/callback'] = 'auth/google_auth/callback';
 
 // Admin settings (application/modules/settings). The controller is called
 // Admin_settings because a class named Settings would clash with the

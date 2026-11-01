@@ -17,6 +17,7 @@ If you've ever done a fresh CodeIgniter 3 install on PHP 8.2+ and immediately se
 - [Working with HMVC modules](#working-with-hmvc-modules)
 - [Template & theming](#template--theming)
 - [Authentication](#authentication)
+- [Accounts & e-mail (verification, password reset, Google)](#accounts--e-mail-verification-password-reset-google)
 - [Roles & permissions](#roles--permissions)
 - [Menu builder & page builder](#menu-builder--page-builder)
 - [Login security & audit log](#login-security--audit-log)
@@ -311,6 +312,28 @@ has_role('admin');             // bool
 ```
 
 The `users` table comes from `application/migrations/20260813120000_create_users_table.php` — run `php index.php console migrate` to create it. This is intentionally minimal (no password reset, no email verification, no OAuth) — extend `application/modules/auth/controllers/Auth.php` for anything beyond that.
+
+## Accounts & e-mail (verification, password reset, Google)
+
+Three optional features, all **off by default** and switched on under **Settings → Accounts & e-mail**. Run `php index.php console migrate` first (it adds `users.email_verified_at`, `users.google_sub` and the `user_tokens` table; every existing user counts as confirmed).
+
+**E-mail.** Configure delivery in `.env` (nothing secret lives in the config file):
+
+| `.env` | |
+|---|---|
+| `MAIL_PROTOCOL` | `mail` (PHP's `mail()`, default), `smtp`, `sendmail`, or `log` (development only: writes each message to `application/logs/mail-DATE.log` instead of sending, so you can click the links; refused in production) |
+| `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASS`, `SMTP_CRYPTO` (`tls`/`ssl`) | for `smtp` |
+| `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME` | defaults for the sender (Settings overrides them) |
+
+Check it with `php index.php console mailtest you@example.com`. A failed send is logged and never breaks or reveals anything on the page.
+
+**Require e-mail verification.** New accounts are not logged in; they get a link (valid 3 days) and must confirm before they can log in. Someone who knows the password but has not confirmed is told so, and can ask for a new link; a wrong password gets the usual message, so nothing leaks. The link opens a page with a button (a mail scanner that "visits" links cannot use it up) and does not log anybody in. With the setting off, new accounts are confirmed from the start and logged in as before.
+
+**Forgot password.** A link on the login page e-mails a reset link valid for **1 hour**. The answer is identical whether or not the address has an account; asking is limited to 5 per hour per IP address and 3 per hour per address; Turnstile applies if it is on (Settings → Security). The new password must be 8+ characters; the link works once, a newer request cancels an older link, and the person logs in afterwards (no automatic login). Pages whose address holds a token are `no-store` with `Referrer-Policy: no-referrer`.
+
+**Sign in with Google.** Create an OAuth client of type *Web application* in the Google Cloud console, add the redirect URI `https://your-site/google/callback` exactly, and paste the client ID and secret into Settings (or `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env`). The flow is OpenID Connect's authorization-code flow with `state`, `nonce` and PKCE; the sign-in session is single use and expires after 10 minutes. Only addresses Google marks as verified are accepted. Who gets in: an account already linked to that Google id; else the account with the same address, which is then linked (if that account never confirmed its address, its password is also replaced by a random one, so whoever registered it first loses their way in); else a new account with the default role. Accounts blocked by the login-security module cannot use Google to get around the block.
+
+How the links are kept safe: tokens are 32 random bytes (64 hex characters), only their SHA-256 hash is stored, they are single use (an atomic `UPDATE ... WHERE used_at IS NULL`), and `console prune` deletes old ones. Known limit: when the mail server is slow, the response time of "forgot password" can hint whether an address has an account; use a local mail relay or a queue if that matters to you.
 
 ## Roles & permissions
 

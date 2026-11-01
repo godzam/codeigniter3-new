@@ -16,7 +16,13 @@ defined('BASEPATH') or exit('No direct script access allowed');
  *   GET|POST /register
  *   GET      /logout
  *
+ * Related flows live in Account.php (e-mail verification, forgot/reset password) and
+ * Google_auth.php (Sign in with Google).
+ *
  * @property User_model $user_model
+ * @property Usertokens $usertokens
+ * @property Settings $settings
+ * @property Accountlinks $accountlinks
  * @property CI_Form_validation $form_validation
  * @property Ratelimiter $ratelimiter
  * @property Loginguard $loginguard
@@ -111,6 +117,17 @@ class Auth extends MX_Controller
             $this->ratelimiter->reset('login:'.$this->input->ip_address());
         }
 
+        // Only now (the password was right) do we say the address still needs confirming:
+        // nobody learns anything about an account without knowing its password.
+        if ($this->verification_required() && property_exists($user, 'email_verified_at') && empty($user->email_verified_at)) {
+            $this->show('login', 'Log in', [
+                'error' => 'Please confirm your email address first: follow the link we sent you.',
+                'unverified_email' => $user->email,
+            ]);
+
+            return;
+        }
+
         $this->log_in_as($user);
         $this->audit->event('login', 'auth', $user->id, $user->name.' ('.$user->email.')');
 
@@ -151,16 +168,31 @@ class Auth extends MX_Controller
             return;
         }
 
-        $user_id = $this->user_model->create([
+        // With "Require e-mail verification" on, the account waits for its link; otherwise it is confirmed from the start.
+        $verify = $this->verification_required();
+        $data = [
             'name' => $this->input->post('name'),
             'email' => $this->input->post('email'),
             'password' => password_hash((string) $this->input->post('password'), PASSWORD_DEFAULT),
             'role' => $this->rbac->default_role_slug(), // set on the Roles page
-        ]);
+        ];
+        if ($this->user_model->has_verification()) {
+            $data['email_verified_at'] = $verify ? null : date('Y-m-d H:i:s');
+        }
+        $user_id = $this->user_model->create($data);
 
         $created = $this->user_model->find($user_id);
-        $this->log_in_as($created);
         $this->audit->created('users', $user_id, $created->name.' ('.$created->email.')', $created);
+
+        if ($verify) {
+            $this->load->library('accountlinks');
+            $sent = $this->accountlinks->send_verification($created);
+            $this->show('check_email', 'Check your email', ['email' => $created->email, 'sent' => $sent]);
+
+            return;
+        }
+
+        $this->log_in_as($created);
         redirect('dashboard');
     }
 
@@ -183,6 +215,16 @@ class Auth extends MX_Controller
     protected function show($view, $title, array $data = [])
     {
         $this->template->set_title($title)->render($view, $data, 'auth');
+    }
+
+    /**
+     * Whether new and existing accounts must confirm their e-mail address before logging in.
+     */
+    protected function verification_required()
+    {
+        $this->load->library('usertokens');
+
+        return (bool) $this->settings->get('email_verification_enabled') && $this->usertokens->available();
     }
 
     /**

@@ -19,14 +19,18 @@ class Users_Seeder extends CI_Seeder
             return;
         }
 
-        $this->CI->db->insert('users', array(
+        $user = array(
             'name' => 'Admin',
             'email' => 'admin@example.com',
             'password' => password_hash('password', PASSWORD_DEFAULT),
             'role' => 'super_admin',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
-        ));
+        );
+        if ($this->CI->db->field_exists('email_verified_at', 'users')) {
+            $user['email_verified_at'] = date('Y-m-d H:i:s'); // the seeded admin never waits for a link
+        }
+        $this->CI->db->insert('users', $user);
 
         echo 'Seeded default admin: admin@example.com / password — change this before deploying anywhere real.'.PHP_EOL;
     }
