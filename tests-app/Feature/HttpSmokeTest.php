@@ -140,8 +140,9 @@ final class HttpSmokeTest extends TestCase
         }
         // A link that is not even shaped like a token never reaches a controller.
         $this->assertSame(404, $client->get('/reset-password/short')->getStatusCode());
-        // Nothing to resend while verification is off: back to the login page.
-        $this->assertContains($client->get('/resend-verification')->getStatusCode(), [301, 302, 303, 307, 308]);
+        // Nothing to resend while verification is off: a redirect to the login page (not followed here).
+        $noFollow = new Client(['base_uri' => self::$baseUri, 'http_errors' => false, 'allow_redirects' => false]);
+        $this->assertContains($noFollow->get('/resend-verification')->getStatusCode(), [301, 302, 303, 307, 308]);
     }
 
     public function testUnknownRouteRendersCustom404Page(): void
