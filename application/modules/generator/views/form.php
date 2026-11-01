@@ -38,7 +38,7 @@ $config = [
 					<label for="g-icon" class="form-label">Menu icon</label>
 					<div class="input-group">
 						<span class="input-group-text"><i class="bi <?php echo $e($values['icon'] ?: 'bi-table') ?>" id="g-icon-preview"></i></span>
-						<input type="text" class="form-control font-monospace<?php echo $invalid('icon') ?>" id="g-icon" maxlength="64" value="<?php echo $e($values['icon']) ?>" placeholder="bi-box-seam" autocomplete="off" spellcheck="false">
+						<input type="text" class="form-control font-monospace<?php echo $invalid('icon') ?>" id="g-icon" maxlength="64" value="<?php echo $e($values['icon']) ?>" placeholder="bi-box-seam" autocomplete="off" spellcheck="false" data-icon-picker="<?php echo $e(asset_url('vendor/bootstrap-icons/icons.json')) ?>">
 						<?php if (isset($errors['icon'])): ?><div class="invalid-feedback"><?php echo $e($errors['icon']) ?></div><?php endif ?>
 					</div>
 					<div class="form-text"><a href="https://icons.getbootstrap.com" target="_blank" rel="noopener">Bootstrap Icons</a> class name.</div>

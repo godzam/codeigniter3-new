@@ -23,6 +23,7 @@ class Menu_model extends CI_Model
 {
     public const TYPE_LINK = 'link';
     public const TYPE_SECTION = 'section';
+    public const TYPE_DROPDOWN = 'dropdown';
 
     /** Deepest nesting the builder allows (keeps the sidebar readable). */
     public const MAX_DEPTH = 2;
@@ -218,13 +219,14 @@ class Menu_model extends CI_Model
 
                     continue;
                 }
-                if (trim((string) ($row['url'] ?? '')) === '') {
+                $isDropdown = $row['type'] === self::TYPE_DROPDOWN;
+                if (!$isDropdown && trim((string) ($row['url'] ?? '')) === '') {
                     continue;
                 }
 
                 $item = [
                     'label' => (string) $row['label'],
-                    'url' => (string) $row['url'],
+                    'url' => $isDropdown ? '' : (string) $row['url'],
                 ];
                 if (trim((string) ($row['icon'] ?? '')) !== '') {
                     $item['icon'] = (string) $row['icon'];
@@ -237,6 +239,9 @@ class Menu_model extends CI_Model
                 }
 
                 $kids = $build($children[(int) $row['id']] ?? []);
+                if ($isDropdown && $kids === []) {
+                    continue; // an empty dropdown would be a link to nowhere
+                }
                 if ($kids !== []) {
                     $item['children'] = $kids;
                 }

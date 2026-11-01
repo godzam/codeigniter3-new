@@ -151,13 +151,14 @@ class Menu_builder extends MX_Controller
     protected function form($item, array $values, array $errors)
     {
         $parents = array_values(array_filter($this->menu_model->all(), static function ($row) use ($item) {
-            // A link may be nested under another link, never under itself.
-            return $row['type'] === Menu_model::TYPE_LINK && (int) $row['id'] !== (int) ($item['id'] ?? 0);
+            // Items go inside a link or a dropdown, never inside a section or themselves.
+            return in_array($row['type'], [Menu_model::TYPE_LINK, Menu_model::TYPE_DROPDOWN], true) && (int) $row['id'] !== (int) ($item['id'] ?? 0);
         }));
 
         $this->template
             ->set_title($item === null ? 'New menu item' : 'Edit '.$item['label'])
             ->set_breadcrumbs(['Home' => '', 'Menu builder' => 'admin/menus', ($item === null ? 'New item' : 'Edit') => null])
+            ->add_foot('<script src="'.asset_url('js/icon-picker.js').'"></script><script src="'.asset_url('js/menu-form.js').'"></script>')
             ->render('form', [
                 'item' => $item,
                 'values' => $values,
@@ -174,7 +175,7 @@ class Menu_builder extends MX_Controller
     {
         $input = (array) $this->input->post(null, false);
         $values = [
-            'type' => ($input['type'] ?? '') === Menu_model::TYPE_SECTION ? Menu_model::TYPE_SECTION : Menu_model::TYPE_LINK,
+            'type' => in_array($input['type'] ?? '', [Menu_model::TYPE_SECTION, Menu_model::TYPE_DROPDOWN], true) ? $input['type'] : Menu_model::TYPE_LINK,
             'label' => trim((string) ($input['label'] ?? '')),
             'icon' => preg_replace('/[^a-z0-9 \-]/i', '', (string) ($input['icon'] ?? '')),
             'url' => trim((string) ($input['url'] ?? '')),
@@ -195,7 +196,10 @@ class Menu_builder extends MX_Controller
                 $errors['url'] = 'That address is not allowed. Use a page of this site (dashboard, page/about) or an http(s):// address.';
             }
         } else {
-            $values['url'] = '';
+            $values['url'] = ''; // dropdowns and sections have no address
+        }
+        if ($values['type'] === Menu_model::TYPE_SECTION) {
+            $values['icon'] = '';
         }
         if ($values['permission'] !== '' && !in_array($values['permission'], $this->rbac->registry()->keys(), true)) {
             $errors['permission'] = 'Unknown permission "'.mb_substr($values['permission'], 0, 40).'". Pick one from the list.';
@@ -211,12 +215,12 @@ class Menu_builder extends MX_Controller
         if ($values['type'] === Menu_model::TYPE_SECTION) {
             $values['parent_id'] = 0;
             if ($hasChildren) {
-                $errors['type'] = 'This item has links under it. Move or delete them before turning it into a section.';
+                $errors['type'] = 'This item has items under it. Move or delete them before turning it into a section.';
             }
         } elseif ($values['parent_id'] !== 0) {
             $parent = $this->menu_model->find($values['parent_id']);
-            if ($parent === null || $parent['type'] !== Menu_model::TYPE_LINK) {
-                $errors['parent_id'] = 'Pick a link from the list as the parent.';
+            if ($parent === null || !in_array($parent['type'], [Menu_model::TYPE_LINK, Menu_model::TYPE_DROPDOWN], true)) {
+                $errors['parent_id'] = 'Pick a link or a dropdown from the list as the parent.';
             } elseif (!MenuTree::canNest($parents, $itemId, $values['parent_id'], Menu_model::MAX_DEPTH)) {
                 $errors['parent_id'] = 'That parent would put the item inside itself or nest the menu too deep (at most '.(Menu_model::MAX_DEPTH + 1).' levels).';
             }

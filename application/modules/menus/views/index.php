@@ -39,7 +39,8 @@ $e = static function ($v) { return htmlspecialchars((string) $v, ENT_QUOTES, 'UT
 								<span class="fw-semibold text-uppercase small text-body-secondary"><?php echo $e($item['label']) ?></span>
 							<?php else: ?>
 								<span class="fw-semibold"><?php echo $e($item['label']) ?></span>
-								<code class="small text-body-secondary"><?php echo $e($item['url']) ?></code>
+								<?php if ($item['type'] === 'dropdown'): ?><span class="pill pill-primary small"><i class="bi bi-chevron-down"></i>dropdown</span>
+								<?php else: ?><code class="small text-body-secondary"><?php echo $e($item['url']) ?></code><?php endif ?>
 							<?php endif ?>
 							<?php if (!empty($item['permission'])): ?><span class="pill pill-secondary small"><?php echo $e($item['permission']) ?></span><?php endif ?>
 							<?php if (!empty($item['super_admin'])): ?><span class="pill pill-warning small">super admin</span><?php endif ?>

@@ -21,10 +21,12 @@ $type = (string) ($values['type'] ?? 'link');
 					<div class="mb-3">
 						<label for="m_type" class="form-label">Kind</label>
 						<select class="form-select<?php echo $invalid('type') ?>" id="m_type" name="type">
-							<option value="link"<?php echo $type !== 'section' ? ' selected' : '' ?>>Link (goes somewhere)</option>
+							<option value="link"<?php echo !in_array($type, ['section', 'dropdown'], true) ? ' selected' : '' ?>>Link (goes somewhere)</option>
+							<option value="dropdown"<?php echo $type === 'dropdown' ? ' selected' : '' ?>>Dropdown (opens a list of links, has no address of its own)</option>
 							<option value="section"<?php echo $type === 'section' ? ' selected' : '' ?>>Section heading (a label above items)</option>
 						</select>
 						<?php echo $error('type') ?>
+						<div class="form-text" id="m_type_help">To fill a dropdown, add links and choose the dropdown under "Inside". A link that has items inside it also opens them, and then its own address is not used.</div>
 					</div>
 
 					<div class="mb-3">
@@ -33,26 +35,21 @@ $type = (string) ($values['type'] ?? 'link');
 						<?php echo $error('label') ?>
 					</div>
 
-					<div class="row" data-link-only>
-						<div class="col-sm-6 mb-3">
+					<div class="row">
+						<div class="col-sm-6 mb-3" data-show-for="link">
 							<label for="m_url" class="form-label">URL</label>
 							<input type="text" class="form-control<?php echo $invalid('url') ?>" id="m_url" name="url" value="<?php echo $e($values['url'] ?? '') ?>" maxlength="255" placeholder="dashboard or https://…">
 							<?php echo $error('url') ?>
 							<div class="form-text">Relative URLs stay on this site; <code>page/your-slug</code> opens a page made in Admin → Pages.</div>
 						</div>
-						<div class="col-sm-6 mb-3">
+						<div class="col-sm-6 mb-3" data-show-for="link dropdown">
 							<label for="m_icon" class="form-label">Icon</label>
-							<input type="text" class="form-control<?php echo $invalid('icon') ?>" id="m_icon" name="icon" value="<?php echo $e($values['icon'] ?? '') ?>" maxlength="60" placeholder="bi-star" list="icon-ideas">
-							<datalist id="icon-ideas">
-								<option value="bi-house"></option><option value="bi-speedometer2"></option><option value="bi-people"></option>
-								<option value="bi-gear"></option><option value="bi-file-text"></option><option value="bi-journal-text"></option>
-								<option value="bi-envelope"></option><option value="bi-info-circle"></option>
-							</datalist>
-							<div class="form-text">A Bootstrap Icons class: <a href="https://icons.getbootstrap.com" target="_blank" rel="noopener">icons.getbootstrap.com</a>.</div>
+							<input type="text" class="form-control<?php echo $invalid('icon') ?>" id="m_icon" name="icon" value="<?php echo $e($values['icon'] ?? '') ?>" maxlength="60" placeholder="bi-star" autocomplete="off" spellcheck="false" data-icon-picker="<?php echo $e(asset_url('vendor/bootstrap-icons/icons.json')) ?>">
+							<div class="form-text">Press <strong>Choose</strong> to pick from all Bootstrap Icons, or type a class such as <code>bi-star</code>.</div>
 						</div>
 					</div>
 
-					<div class="row" data-link-only>
+					<div class="row" data-show-for="link dropdown">
 						<div class="col-sm-6 mb-3">
 							<label for="m_parent" class="form-label">Inside</label>
 							<select class="form-select<?php echo $invalid('parent_id') ?>" id="m_parent" name="parent_id">
@@ -82,7 +79,7 @@ $type = (string) ($values['type'] ?? 'link');
 					</div>
 
 					<div class="row">
-						<div class="col-sm-6 mb-3" data-link-only>
+						<div class="col-sm-6 mb-3" data-show-for="link dropdown">
 							<div class="form-check">
 								<input class="form-check-input" type="checkbox" value="1" id="m_super" name="super_admin"<?php echo !empty($values['super_admin']) ? ' checked' : '' ?>>
 								<label class="form-check-label" for="m_super">Only for super admins</label>
@@ -105,18 +102,3 @@ $type = (string) ($values['type'] ?? 'link');
 		</div>
 	</div>
 </div>
-<script<?php echo csp_nonce_attr() ?>>
-// A section is only a heading: hide everything a link needs.
-(function () {
-	var type = document.getElementById('m_type');
-	if (!type) return;
-	var toggle = function () {
-		var link = type.value !== 'section';
-		document.querySelectorAll('[data-link-only]').forEach(function (el) {
-			el.classList.toggle('d-none', !link);
-		});
-	};
-	type.addEventListener('change', toggle);
-	toggle();
-})();
-</script>
